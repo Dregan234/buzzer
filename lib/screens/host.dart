@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,8 +29,10 @@ class _HostScreenState extends State<HostScreen> {
   }
 
   onData(Uint8List data) {
+    Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
     DateTime time = DateTime.now();
-    serverLogs.add("${time.hour}h${time.minute} : ${String.fromCharCodes(data)}");
+    serverLogs
+    .add("${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
     setState(() {});
   }
 
@@ -44,7 +48,48 @@ class _HostScreenState extends State<HostScreen> {
       developer.log('Failed to get Wifi IPv4', error: e);
       wifiIPv4 = 'Failed to get Wifi IPv4';
     }
-    setState(() {ipAddress = wifiIPv4;});
+    setState(() {
+      ipAddress = wifiIPv4;
+    });
+  }
+
+  Widget _buildChatBubble(String log) {
+    List<String> logParts = log.split(" | ");
+    String name = logParts.last;
+    String message = logParts.length > 1 ? logParts[1] : "";
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(message),
+          const SizedBox(height: 5),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Text(
+              logParts[0],
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -72,7 +117,8 @@ class _HostScreenState extends State<HostScreen> {
                       Container(
                         decoration: BoxDecoration(
                           color: server.running ? Colors.green : Colors.red,
-                          borderRadius: const BorderRadius.all(Radius.circular(3)),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(3)),
                         ),
                         padding: const EdgeInsets.all(5),
                         child: Text(
@@ -107,13 +153,15 @@ class _HostScreenState extends State<HostScreen> {
                   ),
                   Expanded(
                     flex: 1,
-                    child: ListView(
-                      children: serverLogs.map((String log) {
+                    child: ListView.builder(
+                      itemCount: serverLogs.length,
+                      itemBuilder: (context, index) {
+                        String log = serverLogs[index];
                         return Padding(
                           padding: const EdgeInsets.only(top: 15),
-                          child: Text(log),
+                          child: _buildChatBubble(log),
                         );
-                      }).toList(),
+                      },
                     ),
                   ),
                 ],
@@ -154,7 +202,8 @@ class _HostScreenState extends State<HostScreen> {
                     controller.text = "";
                   },
                   minWidth: 30,
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                   child: const Icon(Icons.clear),
                 ),
                 const SizedBox(
@@ -162,11 +211,15 @@ class _HostScreenState extends State<HostScreen> {
                 ),
                 MaterialButton(
                   onPressed: () {
-                    server.broadCast(controller.text);
+                    server.broadCast({
+                      'Username': 'Host',
+                      'Message': controller.text,
+                    });
                     controller.text = "";
                   },
                   minWidth: 30,
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                   child: const Icon(Icons.send),
                 )
               ],

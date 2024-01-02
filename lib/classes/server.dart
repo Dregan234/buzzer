@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 
 import '../models/model.dart';
 
@@ -14,17 +15,26 @@ class Server {
   List<Socket> sockets = [];
 
   start() async {
-    runZoned(() async {
-      server = await ServerSocket.bind('0.0.0.0', 4040);
-      running = true;
-      server!.listen(onRequest);
-      onData!(
-          Uint8List.fromList('Server listening on port 4040'.codeUnits));
-    // ignore: deprecated_member_use
-    }, onError: (e) {
-      onError!(e);
-    });
-  }
+  runZoned(() async {
+    server = await ServerSocket.bind('0.0.0.0', 4040);
+    running = true;
+    server!.listen(onRequest);
+
+    Map<String, dynamic> messageMap = {
+      'Username': 'Server',
+      'Message': 'Server listening on port 4040',
+    };
+
+    String jsonString = jsonEncode(messageMap);
+
+    Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+
+    onData!(messageBytes);
+
+  }, onError: (e) {
+    onError!(e);
+  });
+}
 
   stop() async {
     await server?.close();
@@ -32,12 +42,22 @@ class Server {
     running = false;
   }
 
-  broadCast(String message) {
-    onData!(Uint8List.fromList('Broadcasting : $message'.codeUnits));
-    for (Socket socket in sockets) {
-      socket.write('$message\n');
-    }
+  broadCast(Map<String, dynamic> messageMap) {
+  // Convert the map to a JSON-formatted string
+  String jsonString = jsonEncode(messageMap);
+
+  // Convert the string to a Uint8List
+  Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+
+  // Send the message to the onData callback
+  onData!(messageBytes);
+
+  // Broadcast the message to all connected sockets
+  for (Socket socket in sockets) {
+    socket.write(jsonString + '\n');
   }
+}
+
 
   onRequest(Socket socket) {
     if (!sockets.contains(socket)) {

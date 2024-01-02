@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 
 import '../models/model.dart';
 
@@ -19,23 +20,30 @@ class Client {
 
   late Socket socket;
 
+  // Initialize the socket here
+  Future<void> initSocket() async {
+    socket = await Socket.connect(hostname, port);
+    socket.listen(
+      onData,
+      onError: onError,
+      onDone: disconnect,
+      cancelOnError: false,
+    );
+  }
+
   Future<void> connect() async {
     try {
-      socket = await Socket.connect(hostname, port);
-      socket.listen(
-        onData,
-        onError: onError,
-        onDone: disconnect,
-        cancelOnError: false,
-      );
+      await initSocket();
       connected = true;
     } on Exception catch (exception) {
       onData!(Uint8List.fromList("Error : $exception".codeUnits));
     }
   }
 
-  void write(String message) {
-    socket.write('$message\n');
+  void write(Map<String, dynamic> messageMap) {
+    String jsonString = jsonEncode(messageMap);
+
+    socket.write('$jsonString\n');
   }
 
   void disconnect() {
