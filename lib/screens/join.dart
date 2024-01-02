@@ -1,11 +1,20 @@
-import 'dart:typed_data';
+import 'dart:developer' as developer;
 import 'dart:convert';
+
+import 'package:buzzer/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../classes/client.dart';
+import 'package:buzzer/classes/client.dart';
+import 'package:buzzer/screens/user.dart';
+
+bool isDarkMode(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark;
+}
 
 class JoinScreen extends StatefulWidget {
   @override
@@ -18,6 +27,9 @@ class _JoinScreenState extends State<JoinScreen> {
   TextEditingController controller = TextEditingController();
   TextEditingController ipController = TextEditingController();
   TextEditingController namecontroller = TextEditingController();
+  final _networkInfo = NetworkInfo();
+  String? ipAddress = 'Loading...';
+  bool isExpandedPanel = false;
 
   @override
   void initState() {
@@ -29,13 +41,14 @@ class _JoinScreenState extends State<JoinScreen> {
       onData: onData,
       onError: onError,
     );
+    _initNetworkInfo();
   }
 
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
     DateTime time = DateTime.now();
-    serverLogs
-    .add("${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
+    serverLogs.add(
+        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
     setState(() {});
   }
 
@@ -58,16 +71,33 @@ class _JoinScreenState extends State<JoinScreen> {
     prefs.setString('username', namecontroller.text);
   }
 
-  Widget _buildChatBubble(String log) {
+  Future<void> _initNetworkInfo() async {
+    String? wifiIPv4;
+    try {
+      wifiIPv4 = await _networkInfo.getWifiIP();
+    } on PlatformException catch (e) {
+      developer.log('Failed to get Wifi IPv4', error: e);
+      wifiIPv4 = 'Failed to get Wifi IPv4';
+    }
+    setState(() {
+      ipAddress = wifiIPv4;
+    });
+  }
+
+  Widget _buildChatBubble(String log, BuildContext context) {
     List<String> logParts = log.split(" | ");
     String name = logParts.last;
     String message = logParts.length > 1 ? logParts[1] : "";
+
+    bool isDarkModeActive = isDarkMode(context);
 
     return Container(
       padding: const EdgeInsets.all(8),
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.grey[300], // Change color as needed
+        color: isDarkModeActive
+            ? const Color.fromARGB(255, 0, 0, 30)
+            : Colors.grey[300],
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -75,7 +105,7 @@ class _JoinScreenState extends State<JoinScreen> {
         children: [
           Text(
             name,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -86,7 +116,7 @@ class _JoinScreenState extends State<JoinScreen> {
             alignment: Alignment.bottomRight,
             child: Text(
               logParts[0], // Assuming logParts[0] contains the time
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
               ),
@@ -99,168 +129,294 @@ class _JoinScreenState extends State<JoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Join Game'),
-      ),
-      body: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: TextField(
-              controller: ipController,
-              decoration: const InputDecoration(
-                labelText: 'Enter IP Address',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: TextField(
-              controller: namecontroller,
-              decoration: const InputDecoration(
-                labelText: 'Enter Username',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      const Text(
-                        "Client",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: client.connected ? Colors.green : Colors.red,
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(3)),
-                        ),
-                        padding: const EdgeInsets.all(5),
-                        child: Text(
-                          client.connected ? 'Verbunden' : 'Getrennt',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 15,
-                  ),
-                  ElevatedButton(
-                    child: Text(!client.connected ? 'Verbinden' : 'Trennen'),
-                    onPressed: () async {
-                      client.hostname = ipController.text;
-                      _saveData();
-                      if (client.connected) {
-                        client.disconnect();
-                        serverLogs.clear();
-                      } else {
-                        await client.connect();
-                      }
-                      setState(() {});
+    bool isDarkModeActive = isDarkMode(context);
+    return PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          bool confirmStop = await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Bestätigen'),
+                content: const Text('Willst du wirklich verlassen?'),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
                     },
+                    child: const Text('Nein'),
                   ),
-                  const Divider(
-                    height: 30,
-                    thickness: 1,
-                    color: Colors.black12,
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(true);
+                    },
+                    child: const Text('Ja'),
                   ),
-                  Expanded(
-                    flex: 1,
-                    child: ListView.builder(
-                      itemCount: serverLogs.length,
-                      itemBuilder: (context, index) {
-                        String log = serverLogs[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 15),
-                          child: _buildChatBubble(log),
+                ],
+              );
+            },
+          );
+
+          // If the user confirms, stop the server
+          if (confirmStop == true) {
+            client.disconnect();
+            serverLogs.clear();
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushReplacement(
+                  context, MaterialPageRoute(builder: (_) => HomeScreen()));
+            });
+          }
+
+          // Return false to prevent the default back button behavior
+          return Future.value(confirmStop != false);
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Join Game'),
+            actions: [
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          UserPage(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(1.0, 0.0);
+                        const end = Offset.zero;
+
+                        var tween = Tween(begin: begin, end: end);
+                        var offsetAnimation = animation.drive(tween);
+
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
                         );
                       },
                     ),
+                  );
+                },
+                icon: const FaIcon(FontAwesomeIcons.user),
+              ),
+            ],
+          ),
+          body: Column(
+            children: <Widget>[
+              ExpansionPanelList(
+                elevation: 1,
+                expandedHeaderPadding: const EdgeInsets.all(15),
+                expansionCallback: (int index, bool isExpanded) {
+                  setState(() {
+                    // Toggle the expansion state
+                    isExpandedPanel = !isExpandedPanel;
+                  });
+                },
+                children: [
+                  ExpansionPanel(
+                    headerBuilder: (BuildContext context, bool isExpanded) {
+                      // Removed the Text widget
+                      return Container();
+                    },
+                    body: Column(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: TextField(
+                            controller: ipController,
+                            decoration: const InputDecoration(
+                              labelText: 'Enter IP Address',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: TextField(
+                            controller: namecontroller,
+                            decoration: const InputDecoration(
+                              labelText: 'Enter Username',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    isExpanded: isExpandedPanel,
                   ),
                 ],
               ),
-            ),
-          ),
-          Container(
-            color: Colors.grey,
-            height: 80,
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  flex: 1,
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text(
-                        'Nachricht :',
-                        style: TextStyle(
-                          fontSize: 8,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          const Text(
+                            "Client",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color:
+                                  client.connected ? Colors.green : Colors.red,
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(3)),
+                            ),
+                            padding: const EdgeInsets.all(5),
+                            child: Text(
+                              client.connected ? 'Verbunden' : 'Getrennt',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 15,
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            child: Text(
+                                !client.connected ? 'Verbinden' : 'Trennen'),
+                            onPressed: () async {
+                              client.hostname = ipController.text;
+                              _saveData();
+                              if (client.connected) {
+                                client.disconnect();
+                                serverLogs.clear();
+                              } else {
+                                await client.connect();
+                              }
+                              setState(() {});
+                            },
+                          ),
+                          const SizedBox(width: 5),
+                          ElevatedButton(
+                            child: const Text('Chat leeren'),
+                            onPressed: () {
+                              setState(() {
+                                serverLogs.clear();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(
+                        height: 30,
+                        thickness: 1,
+                        color: Colors.black12,
                       ),
                       Expanded(
                         flex: 1,
-                        child: TextFormField(
-                          controller: controller,
+                        child: ListView.builder(
+                          itemCount: serverLogs.length,
+                          itemBuilder: (context, index) {
+                            String log = serverLogs[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 15),
+                              child: _buildChatBubble(log, context),
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(
-                  width: 15,
+              ),
+              Container(
+                color: isDarkModeActive
+                    ? const Color.fromARGB(255, 0, 0, 30)
+                    : Colors.grey,
+                height: 80,
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Nachricht :',
+                            style: TextStyle(
+                              fontSize: 8,
+                              color: isDarkModeActive
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: TextFormField(
+                              controller: controller,
+                              style: TextStyle(
+                                color: isDarkModeActive
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 15,
+                    ),
+                    MaterialButton(
+                      onPressed: () {
+                        controller.text = "";
+                      },
+                      minWidth: 30,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 15),
+                      child: Icon(
+                        Icons.clear,
+                        color: isDarkModeActive ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 15,
+                    ),
+                    const SizedBox(
+                      width: 15,
+                    ),
+                    MaterialButton(
+                      onPressed: () {
+                        client.write({
+                          'Username': namecontroller.text,
+                          'Message': controller.text,
+                        });
+                        controller.text = "";
+                      },
+                      minWidth: 30,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 15),
+                      child: Icon(
+                        Icons.send,
+                        color: isDarkModeActive ? Colors.white : Colors.black,
+                      ),
+                    )
+                  ],
                 ),
-                MaterialButton(
-                  onPressed: () {
-                    controller.text = "";
-                  },
-                  minWidth: 30,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                  child: const Icon(Icons.clear),
-                ),
-                const SizedBox(
-                  width: 15,
-                ),
-                MaterialButton(
-                  onPressed: () {
-                    client.write({
-                      'Username': namecontroller.text,
-                      'Message': controller.text,
-                    });
-                    controller.text = "";
-                  },
-                  minWidth: 30,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                  child: const Icon(Icons.send),
-                )
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ));
   }
 
   @override
   dispose() {
     controller.dispose();
-    client.disconnect();
     super.dispose();
   }
 }

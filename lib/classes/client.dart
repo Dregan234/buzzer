@@ -18,12 +18,12 @@ class Client {
   DynamicCallback? onError;
   bool connected = false;
 
-  late Socket socket;
+  Socket? socket;
 
   // Initialize the socket here
   Future<void> initSocket() async {
     socket = await Socket.connect(hostname, port);
-    socket.listen(
+    socket?.listen(
       onData,
       onError: onError,
       onDone: disconnect,
@@ -43,11 +43,11 @@ class Client {
   void write(Map<String, dynamic> messageMap) {
     String jsonString = jsonEncode(messageMap);
 
-    socket.write('$jsonString\n');
+    socket?.write('$jsonString\n');
   }
 
   void disconnect() {
-    socket.destroy();
+    socket?.destroy();
     connected = false;
   }
 }
