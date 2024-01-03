@@ -9,6 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      initialRoute: "/",
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       home: PopScope(

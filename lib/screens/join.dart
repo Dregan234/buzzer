@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:buzzer/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +15,8 @@ bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
 }
 
+final GlobalKey<UserPageState> userPageKey = GlobalKey<UserPageState>();
+
 class JoinScreen extends StatefulWidget {
   @override
   _JoinScreenState createState() => _JoinScreenState();
@@ -24,6 +25,7 @@ class JoinScreen extends StatefulWidget {
 class _JoinScreenState extends State<JoinScreen> {
   late Client client;
   List<String> serverLogs = [];
+  List<Map<String, String>> players = [];
   TextEditingController controller = TextEditingController();
   TextEditingController ipController = TextEditingController();
   TextEditingController namecontroller = TextEditingController();
@@ -159,6 +161,12 @@ class _JoinScreenState extends State<JoinScreen> {
 
           // If the user confirms, stop the server
           if (confirmStop == true) {
+            client.write({
+              'Username': namecontroller.text,
+              'Message': "User Disconnected",
+              'Status': "disconnected",
+              'IP': ipAddress
+            });
             client.disconnect();
             serverLogs.clear();
 
@@ -174,33 +182,6 @@ class _JoinScreenState extends State<JoinScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Join Game'),
-            actions: [
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          UserPage(),
-                      transitionsBuilder:
-                          (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(1.0, 0.0);
-                        const end = Offset.zero;
-
-                        var tween = Tween(begin: begin, end: end);
-                        var offsetAnimation = animation.drive(tween);
-
-                        return SlideTransition(
-                          position: offsetAnimation,
-                          child: child,
-                        );
-                      },
-                    ),
-                  );
-                },
-                icon: const FaIcon(FontAwesomeIcons.user),
-              ),
-            ],
           ),
           body: Column(
             children: <Widget>[
@@ -292,10 +273,22 @@ class _JoinScreenState extends State<JoinScreen> {
                               client.hostname = ipController.text;
                               _saveData();
                               if (client.connected) {
+                                client.write({
+                                  'Username': namecontroller.text,
+                                  'Message': "User Disconnected",
+                                  'Status': "disconnected",
+                                  'IP': ipAddress
+                                });
                                 client.disconnect();
                                 serverLogs.clear();
                               } else {
                                 await client.connect();
+                                client.write({
+                                  'Username': namecontroller.text,
+                                  'Message': "User Connected",
+                                  'Status': "connected",
+                                  'IP': ipAddress
+                                });
                               }
                               setState(() {});
                             },

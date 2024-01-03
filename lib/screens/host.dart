@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:convert';
 
-import 'package:buzzer/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -15,6 +14,8 @@ bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
 }
 
+final GlobalKey<UserPageState> userPageKey = GlobalKey<UserPageState>();
+
 class HostScreen extends StatefulWidget {
   @override
   _HostScreenState createState() => _HostScreenState();
@@ -23,6 +24,7 @@ class HostScreen extends StatefulWidget {
 class _HostScreenState extends State<HostScreen> {
   late Server server;
   List<String> serverLogs = [];
+  List<Map<String, String>> players = [];
   TextEditingController controller = TextEditingController();
   String? ipAddress = 'Loading...';
   final _networkInfo = NetworkInfo();
@@ -36,6 +38,29 @@ class _HostScreenState extends State<HostScreen> {
 
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
+    if (dict["Status"] == "connected") {
+      String username = dict["Username"];
+      String ip = dict["IP"] ?? "Null";
+
+      bool ipExists = players.any((player) => player["IP"] == ip);
+
+      if (!ipExists) {
+        players.add({"Username": username, "IP": ip});
+        if (userPageKey.currentState != null) {
+          userPageKey.currentState!.updatePlayersList();
+        }
+      } else {
+        print('Player $username with IP $ip already exists.');
+      }
+    } else if (dict["Status"] == "disconnected") {
+      String ip = dict["IP"] ?? "Null";
+
+      players.removeWhere((player) => player["IP"] == ip);
+      if (userPageKey.currentState != null) {
+        userPageKey.currentState!.updatePlayersList();
+      }
+    }
+
     DateTime time = DateTime.now();
     serverLogs.add(
         "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
@@ -138,8 +163,8 @@ class _HostScreenState extends State<HostScreen> {
           serverLogs.clear();
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => HomeScreen()));
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/', (route) => false);
           });
         }
 
@@ -156,7 +181,7 @@ class _HostScreenState extends State<HostScreen> {
                   context,
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
-                        UserPage(),
+                        UserPage(players: players, userPageKey: userPageKey, onUpdatePlayers: (){}),
                     transitionsBuilder:
                         (context, animation, secondaryAnimation, child) {
                       const begin = Offset(1.0, 0.0);
