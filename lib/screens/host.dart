@@ -16,7 +16,10 @@ bool isDarkMode(BuildContext context) {
 }
 
 class HostScreen extends StatefulWidget {
+  const HostScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _HostScreenState createState() => _HostScreenState();
 }
 
@@ -49,6 +52,7 @@ class _HostScreenState extends State<HostScreen> {
         if (!ipExists) {
           players.add({"Username": username, "IP": ip});
         } else {
+          // ignore: avoid_print
           print('Player $username with IP $ip already exists.');
         }
         DateTime timeConnected = DateTime.now();
@@ -87,7 +91,7 @@ class _HostScreenState extends State<HostScreen> {
               " | ${dict["Message"]} | ${dict["Username"]}");
           setState(() {});
 
-          Future.delayed(Duration(seconds: 2), () {
+          Future.delayed(const Duration(seconds: 2), () {
             isSoundPlaying = false;
           });
         }
@@ -104,6 +108,7 @@ class _HostScreenState extends State<HostScreen> {
   }
 
   onError(dynamic error) {
+    // ignore: avoid_print
     print(error);
   }
 
@@ -206,6 +211,7 @@ class _HostScreenState extends State<HostScreen> {
         }
 
         // Return false to prevent the default back button behavior
+        // ignore: void_checks
         return Future.value(confirmStop != false);
       },
       child: Scaffold(

@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:Bonobuzzer/screens/buzzer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +18,10 @@ bool isDarkMode(BuildContext context) {
 final GlobalKey<UserPageState> userPageKey = GlobalKey<UserPageState>();
 
 class JoinScreen extends StatefulWidget {
+  const JoinScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _JoinScreenState createState() => _JoinScreenState();
 }
 
@@ -85,6 +87,13 @@ class _JoinScreenState extends State<JoinScreen> {
     setState(() {
       ipAddress = wifiIPv4;
     });
+  }
+
+  clientChat(String name, String mes) {
+    DateTime time = DateTime.now();
+    serverLogs.add(
+        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | $mes | $name");
+    setState(() {});
   }
 
   Widget _buildChatBubble(String log, BuildContext context) {
@@ -179,6 +188,7 @@ class _JoinScreenState extends State<JoinScreen> {
           }
 
           // Return false to prevent the default back button behavior
+          // ignore: void_checks
           return Future.value(confirmStop != false);
         },
         child: Scaffold(
@@ -418,6 +428,7 @@ class _JoinScreenState extends State<JoinScreen> {
                           'Username': namecontroller.text,
                           'Message': controller.text,
                         });
+                        clientChat(namecontroller.text, controller.text);
                         controller.text = "";
                       },
                       minWidth: 30,

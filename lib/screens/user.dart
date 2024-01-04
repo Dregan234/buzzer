@@ -25,7 +25,7 @@ class UserPageState extends State<UserPage> {
                   context,
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
-                        PointsPage(),
+                        const PointsPage(),
                     transitionsBuilder:
                         (context, animation, secondaryAnimation, child) {
                       const begin = Offset(1.0, 0.0);

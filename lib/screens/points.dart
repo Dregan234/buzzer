@@ -89,7 +89,6 @@ class PointsPageState extends State<PointsPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String playersJson = playersListToJson(players);
     prefs.setString('players', playersJson);
-    print("Players saved!");
   }
 
   void _loadPlayers() async {

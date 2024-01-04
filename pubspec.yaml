@@ -34,7 +34,6 @@ dependencies:
   font_awesome_flutter: ^10.6.0
   network_info_plus: ^4.1.0
   shared_preferences: ^2.2.2
-  web_socket_channel: ^2.2.0
 
 dev_dependencies:
   flutter_test:

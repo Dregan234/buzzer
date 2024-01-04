@@ -2,13 +2,15 @@ import 'package:Bonobuzzer/classes/client.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ignore: must_be_immutable
 class BuzzerPage extends StatefulWidget {
   final Client client;
   String name;
 
-  BuzzerPage({required this.client, required this.name});
+  BuzzerPage({super.key, required this.client, required this.name});
 
   @override
+  // ignore: library_private_types_in_public_api
   _BuzzerPageState createState() => _BuzzerPageState();
 }
 
@@ -87,6 +89,7 @@ class _BuzzerPageState extends State<BuzzerPage> {
             _buildSoundTile('Kugelfisch', 'puff.mp3'),
             _buildSoundTile('Schildkröte', 'turtle.mp3'),
             _buildSoundTile('Yippie', 'Yippie.mp3'),
+            _buildSoundTile("Finds heraus", "nothing.mp3")
           ],
         );
       },

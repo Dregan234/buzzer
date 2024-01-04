@@ -31,6 +31,7 @@ class Server {
 
     onData!(messageBytes);
 
+  // ignore: deprecated_member_use
   }, onError: (e) {
     onError!(e);
   });
@@ -43,18 +44,14 @@ class Server {
   }
 
   broadCast(Map<String, dynamic> messageMap) {
-  // Convert the map to a JSON-formatted string
   String jsonString = jsonEncode(messageMap);
 
-  // Convert the string to a Uint8List
   Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
 
-  // Send the message to the onData callback
   onData!(messageBytes);
 
-  // Broadcast the message to all connected sockets
   for (Socket socket in sockets) {
-    socket.write(jsonString + '\n');
+    socket.write('$jsonString\n');
   }
 }
 

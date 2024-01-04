@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 
-import '../models/model.dart';
+import 'package:Bonobuzzer/models/model.dart';
 
 class Client {
   Client({
