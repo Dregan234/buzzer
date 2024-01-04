@@ -1,15 +1,16 @@
 import 'dart:developer' as developer;
 import 'dart:convert';
 
-import 'package:buzzer/main.dart';
+import 'package:Bonobuzzer/screens/buzzer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:buzzer/classes/client.dart';
-import 'package:buzzer/screens/user.dart';
+import 'package:Bonobuzzer/classes/client.dart';
+import 'package:Bonobuzzer/screens/user.dart';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -136,6 +137,7 @@ class _JoinScreenState extends State<JoinScreen> {
         canPop: false,
         onPopInvoked: (didPop) async {
           bool confirmStop = await showDialog(
+            barrierDismissible: false,
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
@@ -171,9 +173,9 @@ class _JoinScreenState extends State<JoinScreen> {
             serverLogs.clear();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => HomeScreen()));
-            });
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/', (route) => false);
+          });
           }
 
           // Return false to prevent the default back button behavior
@@ -182,6 +184,33 @@ class _JoinScreenState extends State<JoinScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Join Game'),
+            actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        BuzzerPage(client: client, name: namecontroller.text),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+
+                      var tween = Tween(begin: begin, end: end);
+                      var offsetAnimation = animation.drive(tween);
+
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+              icon: const Icon(Icons.music_note_outlined),
+            ),
+          ],
           ),
           body: Column(
             children: <Widget>[

@@ -6,15 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:audioplayers/audioplayers.dart';
 
-import 'package:buzzer/classes/server.dart';
-import 'package:buzzer/screens/user.dart';
+import 'package:Bonobuzzer/classes/server.dart';
+import 'package:Bonobuzzer/screens/user.dart';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
 }
-
-final GlobalKey<UserPageState> userPageKey = GlobalKey<UserPageState>();
 
 class HostScreen extends StatefulWidget {
   @override
@@ -26,8 +25,10 @@ class _HostScreenState extends State<HostScreen> {
   List<String> serverLogs = [];
   List<Map<String, String>> players = [];
   TextEditingController controller = TextEditingController();
+  final _audioPlayer = AudioPlayer();
   String? ipAddress = 'Loading...';
   final _networkInfo = NetworkInfo();
+  bool isSoundPlaying = false;
 
   @override
   void initState() {
@@ -38,33 +39,68 @@ class _HostScreenState extends State<HostScreen> {
 
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
-    if (dict["Status"] == "connected") {
-      String username = dict["Username"];
-      String ip = dict["IP"] ?? "Null";
+    switch (dict["Status"]) {
+      case "connected":
+        String username = dict["Username"];
+        String ip = dict["IP"] ?? "Null";
 
-      bool ipExists = players.any((player) => player["IP"] == ip);
+        bool ipExists = players.any((player) => player["IP"] == ip);
 
-      if (!ipExists) {
-        players.add({"Username": username, "IP": ip});
-        if (userPageKey.currentState != null) {
-          userPageKey.currentState!.updatePlayersList();
+        if (!ipExists) {
+          players.add({"Username": username, "IP": ip});
+        } else {
+          print('Player $username with IP $ip already exists.');
         }
-      } else {
-        print('Player $username with IP $ip already exists.');
-      }
-    } else if (dict["Status"] == "disconnected") {
-      String ip = dict["IP"] ?? "Null";
+        DateTime timeConnected = DateTime.now();
+        serverLogs.add("${timeConnected.hour.toString().padLeft(2, '0')}"
+            ":${timeConnected.minute.toString().padLeft(2, '0')} | ${dict["Username"]} connected.");
+        setState(() {});
+        break;
 
-      players.removeWhere((player) => player["IP"] == ip);
-      if (userPageKey.currentState != null) {
-        userPageKey.currentState!.updatePlayersList();
-      }
+      case "disconnected":
+        String ip = dict["IP"] ?? "Null";
+
+        players.removeWhere((player) => player["IP"] == ip);
+
+        DateTime timeDisconnected = DateTime.now();
+        serverLogs.add("${timeDisconnected.hour.toString().padLeft(2, '0')}"
+            ":${timeDisconnected.minute.toString().padLeft(2, '0')} | ${dict["Username"]} disconnected.");
+        setState(() {});
+        break;
+
+      case "Buzzer":
+        if (!isSoundPlaying) {
+          isSoundPlaying = true;
+          String buzzerstring = dict["Sound"] ?? "buzzer.mp3";
+          DateTime now = DateTime.now();
+          String currentTime =
+              "${now.hour}:${now.minute.toString().padLeft(2, '0')}"
+              ":${now.second.toString().padLeft(2, '0')}.${now.millisecond}";
+          AssetSource buzzersound = AssetSource(buzzerstring);
+
+          _audioPlayer.play(buzzersound);
+
+          dict["Message"] = "${dict["Message"]} $currentTime";
+          DateTime time = DateTime.now();
+          serverLogs.add(
+              "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}"
+              " | ${dict["Message"]} | ${dict["Username"]}");
+          setState(() {});
+
+          Future.delayed(Duration(seconds: 2), () {
+            isSoundPlaying = false;
+          });
+        }
+        break;
+
+      default:
+        DateTime timeDefault = DateTime.now();
+        serverLogs.add(
+            "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}"
+            " | ${dict["Message"]} | ${dict["Username"]}");
+        setState(() {});
+        break;
     }
-
-    DateTime time = DateTime.now();
-    serverLogs.add(
-        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
-    setState(() {});
   }
 
   onError(dynamic error) {
@@ -134,6 +170,7 @@ class _HostScreenState extends State<HostScreen> {
       canPop: false,
       onPopInvoked: (didPop) async {
         bool confirmStop = await showDialog(
+          barrierDismissible: false,
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
@@ -175,31 +212,34 @@ class _HostScreenState extends State<HostScreen> {
         appBar: AppBar(
           title: const Text('Host'),
           actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        UserPage(players: players, userPageKey: userPageKey, onUpdatePlayers: (){}),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(1.0, 0.0);
-                      const end = Offset.zero;
+            Tooltip(
+              message: "Spielerliste",
+              child: IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          UserPage(players: players),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(1.0, 0.0);
+                        const end = Offset.zero;
 
-                      var tween = Tween(begin: begin, end: end);
-                      var offsetAnimation = animation.drive(tween);
+                        var tween = Tween(begin: begin, end: end);
+                        var offsetAnimation = animation.drive(tween);
 
-                      return SlideTransition(
-                        position: offsetAnimation,
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-              icon: const FaIcon(FontAwesomeIcons.user),
-            ),
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                },
+                icon: const FaIcon(FontAwesomeIcons.user),
+              ),
+            )
           ],
         ),
         body: Column(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:buzzer/screens/host.dart';
-import 'package:buzzer/screens/join.dart';
+import 'package:Bonobuzzer/screens/host.dart';
+import 'package:Bonobuzzer/screens/join.dart';
 
 void main() => runApp(MyApp());
 
