@@ -216,7 +216,13 @@ class _HostScreenState extends State<HostScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Host'),
+          title: GestureDetector(
+            onTap: () {
+              AssetSource sound = AssetSource("gay.mp3");
+              _audioPlayer.play(sound);
+            },
+            child: const Text('Host'),
+          ),
           actions: [
             Tooltip(
               message: "Spielerliste",
