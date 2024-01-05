@@ -1,10 +1,9 @@
-import 'package:Bonobuzzer/classes/client.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ignore: must_be_immutable
 class BuzzerPage extends StatefulWidget {
-  final Client client;
+  final client;
   String name;
 
   BuzzerPage({super.key, required this.client, required this.name});
@@ -44,12 +43,14 @@ class _BuzzerPageState extends State<BuzzerPage> {
       appBar: AppBar(
         title: const Text('Buzzer Page'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              _showSoundSelectionMenu(context);
-            },
-          ),
+          Tooltip(
+              message: "Buzzersound",
+              child: IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () {
+                  _showSoundSelectionMenu(context);
+                },
+              )),
         ],
       ),
       body: Center(
@@ -78,29 +79,29 @@ class _BuzzerPageState extends State<BuzzerPage> {
   }
 
   void _showSoundSelectionMenu(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    builder: (BuildContext context) {
-      return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSoundTile('Buzzer', 'buzzer.mp3'),
-            _buildSoundTile('Hallo', 'Hallo.mp3'),
-            _buildSoundTile('Kugelfisch', 'puff.mp3'),
-            _buildSoundTile('Schildkröte', 'turtle.mp3'),
-            _buildSoundTile('Yippie', 'Yippie.mp3'),
-            _buildSoundTile("Finds heraus", "nothing.mp3"),
-            _buildSoundTile("Alarm", "alarm.mp3"),
-            _buildSoundTile("SUS", "among.mp3"),
-            _buildSoundTile("Halt", "halt.mp3"),
-            _buildSoundTile("UwU", "uwu.mp3")
-          ],
-        ),
-      );
-    },
-  );
-}
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSoundTile('Buzzer', 'buzzer.mp3'),
+              _buildSoundTile('Hallo', 'Hallo.mp3'),
+              _buildSoundTile('Kugelfisch', 'puff.mp3'),
+              _buildSoundTile('Schildkröte', 'turtle.mp3'),
+              _buildSoundTile('Yippie', 'Yippie.mp3'),
+              _buildSoundTile("Finds heraus", "nothing.mp3"),
+              _buildSoundTile("Alarm", "alarm.mp3"),
+              _buildSoundTile("SUS", "among.mp3"),
+              _buildSoundTile("Halt", "halt.mp3"),
+              _buildSoundTile("UwU", "uwu.mp3")
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildSoundTile(String soundName, String soundValue) {
     return ListTile(

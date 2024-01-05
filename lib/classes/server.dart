@@ -15,27 +15,27 @@ class Server {
   List<Socket> sockets = [];
 
   start() async {
-  runZoned(() async {
-    server = await ServerSocket.bind('0.0.0.0', 4040);
-    running = true;
-    server!.listen(onRequest);
+    runZoned(() async {
+      server = await ServerSocket.bind('0.0.0.0', 4040);
+      running = true;
+      server!.listen(onRequest);
 
-    Map<String, dynamic> messageMap = {
-      'Username': 'Server',
-      'Message': 'Server listening on port 4040',
-    };
+      Map<String, dynamic> messageMap = {
+        'Username': 'Server',
+        'Message': 'Server listening on port 4040',
+      };
 
-    String jsonString = jsonEncode(messageMap);
+      String jsonString = jsonEncode(messageMap);
 
-    Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+      Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
 
-    onData!(messageBytes);
+      onData!(messageBytes);
 
-  // ignore: deprecated_member_use
-  }, onError: (e) {
-    onError!(e);
-  });
-}
+      // ignore: deprecated_member_use
+    }, onError: (e) {
+      onError!(e);
+    });
+  }
 
   stop() async {
     await server?.close();
@@ -44,17 +44,24 @@ class Server {
   }
 
   broadCast(Map<String, dynamic> messageMap) {
-  String jsonString = jsonEncode(messageMap);
+    String jsonString = jsonEncode(messageMap);
 
-  Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+    Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
 
-  onData!(messageBytes);
+    onData!(messageBytes);
 
-  for (Socket socket in sockets) {
-    socket.write('$jsonString\n');
+    for (Socket socket in sockets) {
+      socket.write('$jsonString\n');
+    }
   }
-}
 
+  void write(Map<String, dynamic> messageMap) {
+    String jsonString = jsonEncode(messageMap);
+
+    Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+
+    onData!(messageBytes);
+  }
 
   onRequest(Socket socket) {
     if (!sockets.contains(socket)) {

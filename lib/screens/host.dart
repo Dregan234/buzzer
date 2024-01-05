@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:convert';
 
+import 'package:Bonobuzzer/screens/buzzer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -168,6 +169,34 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
+  Future<void> _showVersionInfo(BuildContext context) async {
+    final appVersion = "1.0.0";
+    final makerName = "Von Bonobos für Bonobos";
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('App Info'),
+          actions: <Widget>[
+            ListTile(
+              title: Text('Version: $appVersion'),
+            ),
+            ListTile(
+              title: Text('Ersteller: $makerName'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isDarkModeActive = isDarkMode(context);
@@ -225,6 +254,33 @@ class _HostScreenState extends State<HostScreen> {
           ),
           actions: [
             Tooltip(
+                message: "Buzzer",
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            BuzzerPage(client: server, name: "Host"),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0);
+                          const end = Offset.zero;
+
+                          var tween = Tween(begin: begin, end: end);
+                          var offsetAnimation = animation.drive(tween);
+
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.music_note_outlined),
+                )),
+            Tooltip(
               message: "Spielerliste",
               child: IconButton(
                 onPressed: () {
@@ -251,7 +307,7 @@ class _HostScreenState extends State<HostScreen> {
                 },
                 icon: const FaIcon(FontAwesomeIcons.user),
               ),
-            )
+            ),
           ],
         ),
         body: Column(
@@ -265,10 +321,17 @@ class _HostScreenState extends State<HostScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
-                        Text(
-                          "Server-IP: $ipAddress",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18),
+                        GestureDetector(
+                          onTap: () {
+                            _showVersionInfo(context);
+                          },
+                          child: Text(
+                            "Server-IP: $ipAddress",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
                         ),
                         Container(
                           decoration: BoxDecoration(

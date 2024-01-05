@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:Bonobuzzer/screens/host.dart';
 import 'package:Bonobuzzer/screens/join.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  runApp(new MyApp());
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

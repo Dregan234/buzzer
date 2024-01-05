@@ -182,9 +182,9 @@ class _JoinScreenState extends State<JoinScreen> {
             serverLogs.clear();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context)
-                .pushNamedAndRemoveUntil('/', (route) => false);
-          });
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
+            });
           }
 
           // Return false to prevent the default back button behavior
@@ -195,32 +195,37 @@ class _JoinScreenState extends State<JoinScreen> {
           appBar: AppBar(
             title: const Text('Join Game'),
             actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        BuzzerPage(client: client, name: namecontroller.text),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(1.0, 0.0);
-                      const end = Offset.zero;
+              Tooltip(
+                  message: "Buzzer",
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  BuzzerPage(
+                                      client: client,
+                                      name: namecontroller.text),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0);
+                            const end = Offset.zero;
 
-                      var tween = Tween(begin: begin, end: end);
-                      var offsetAnimation = animation.drive(tween);
+                            var tween = Tween(begin: begin, end: end);
+                            var offsetAnimation = animation.drive(tween);
 
-                      return SlideTransition(
-                        position: offsetAnimation,
-                        child: child,
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
+                        ),
                       );
                     },
-                  ),
-                );
-              },
-              icon: const Icon(Icons.music_note_outlined),
-            ),
-          ],
+                    icon: const Icon(Icons.music_note_outlined),
+                  )),
+            ],
           ),
           body: Column(
             children: <Widget>[
