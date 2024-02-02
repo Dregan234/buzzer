@@ -41,10 +41,13 @@ class Client {
   }
 
   void write(Map<String, dynamic> messageMap) {
+  try {
     String jsonString = jsonEncode(messageMap);
-
-    socket?.write('$jsonString\n');
+    socket?.write(jsonString);
+  } catch (e) {
+    print('Error writing to socket: $e');
   }
+}
 
   void disconnect() {
     socket?.destroy();

@@ -11,7 +11,7 @@
             "name": "buzzer - Player",
             "request": "launch",
             "type": "dart",
-            "deviceId": "emulator-5554"
+            "deviceId": "ce011821c89834700d"
         },
         {
             "name": "buzzer (profile mode)",

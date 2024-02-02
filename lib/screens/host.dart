@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:Bonobuzzer/classes/server.dart';
 import 'package:Bonobuzzer/screens/user.dart';
@@ -26,13 +27,15 @@ class HostScreen extends StatefulWidget {
 
 class _HostScreenState extends State<HostScreen> {
   late Server server;
-  List<String> serverLogs = [];
+  List<Map<String, dynamic>> serverLogs = [];
   List<Map<String, String>> players = [];
   TextEditingController controller = TextEditingController();
   final _audioPlayer = AudioPlayer();
   String? ipAddress = 'Loading...';
   final _networkInfo = NetworkInfo();
   bool isSoundPlaying = false;
+
+  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -57,9 +60,22 @@ class _HostScreenState extends State<HostScreen> {
           print('Player $username with IP $ip already exists.');
         }
         DateTime timeConnected = DateTime.now();
-        serverLogs.add("${timeConnected.hour.toString().padLeft(2, '0')}"
-            ":${timeConnected.minute.toString().padLeft(2, '0')} | ${dict["Username"]} connected.");
+        String time =
+            "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"] + " connected",
+          "Message": dict["Username"] + " connected"
+        });
         setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
         break;
 
       case "disconnected":
@@ -68,9 +84,22 @@ class _HostScreenState extends State<HostScreen> {
         players.removeWhere((player) => player["IP"] == ip);
 
         DateTime timeDisconnected = DateTime.now();
-        serverLogs.add("${timeDisconnected.hour.toString().padLeft(2, '0')}"
-            ":${timeDisconnected.minute.toString().padLeft(2, '0')} | ${dict["Username"]} disconnected.");
+        String time =
+            "${timeDisconnected.hour.toString().padLeft(2, '0')}:${timeDisconnected.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"] + " disconnected",
+          "Message": dict["Username"] + " disconnected"
+        });
         setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
         break;
 
       case "Buzzer":
@@ -86,24 +115,68 @@ class _HostScreenState extends State<HostScreen> {
           _audioPlayer.play(buzzersound);
 
           dict["Message"] = "${dict["Message"]} $currentTime";
-          DateTime time = DateTime.now();
-          serverLogs.add(
-              "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}"
-              " | ${dict["Message"]} | ${dict["Username"]}");
+          DateTime timenow = DateTime.now();
+          String time =
+              "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+          serverLogs.add({
+            "Time": time,
+            "Username": dict["Username"],
+            "Message": dict["Message"]
+          });
           setState(() {});
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          });
 
           Future.delayed(const Duration(seconds: 2), () {
             isSoundPlaying = false;
           });
         }
         break;
+      case "SVG":
+        DateTime timesvg = DateTime.now();
+        String time =
+            "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"],
+          "Message": dict["SVG"],
+          "SVG": true
+        });
+        setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
+        break;
 
       default:
         DateTime timeDefault = DateTime.now();
-        serverLogs.add(
-            "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}"
-            " | ${dict["Message"]} | ${dict["Username"]}");
+        String time =
+            "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"],
+          "Message": dict["Message"]
+        });
         setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
         break;
     }
   }
@@ -126,12 +199,11 @@ class _HostScreenState extends State<HostScreen> {
     });
   }
 
-  Widget _buildChatBubble(String log, BuildContext context) {
-    List<String> logParts = log.split(" | ");
-    String name = logParts.last;
-    String message = logParts.length > 1 ? logParts[1] : "";
-
+  Widget _buildChatBubble(Map<String, dynamic> log, BuildContext context) {
+    String name = log["Username"];
+    String message = log["Message"];
     bool isDarkModeActive = isDarkMode(context);
+    print(message);
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -152,12 +224,19 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
           const SizedBox(height: 5),
-          Text(message),
+          if (log["SVG"] == true)
+            SvgPicture.string(
+              message,
+              width: 200,
+              height: 200,
+            )
+          else
+            Text(message),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.bottomRight,
             child: Text(
-              logParts[0], // Assuming logParts[0] contains the time
+              log["Time"],
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -170,7 +249,7 @@ class _HostScreenState extends State<HostScreen> {
   }
 
   Future<void> _showVersionInfo(BuildContext context) async {
-    final appVersion = "1.0.0";
+    final appVersion = "1.0.1";
     final makerName = "Von Bonobos für Bonobos";
 
     return showDialog(
@@ -387,11 +466,19 @@ class _HostScreenState extends State<HostScreen> {
                     Expanded(
                       flex: 1,
                       child: ListView.builder(
+                        controller: _scrollController,
                         itemCount: serverLogs.length,
                         itemBuilder: (context, index) {
-                          String log = serverLogs[index];
+                          if (index >= serverLogs.length) {
+                            return SizedBox();
+                          }
+                          Map<String, dynamic>? log = serverLogs[index];
+                          if (!log.containsKey("Username") ||
+                              !log.containsKey("Time")) {
+                            return SizedBox();
+                          }
                           return Padding(
-                            padding: const EdgeInsets.only(top: 15),
+                            padding: EdgeInsets.only(top: 15),
                             child: _buildChatBubble(log, context),
                           );
                         },

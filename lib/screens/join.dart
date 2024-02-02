@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:convert';
 
 import 'package:Bonobuzzer/screens/buzzer.dart';
+import 'package:Bonobuzzer/screens/draw.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
@@ -27,7 +28,7 @@ class JoinScreen extends StatefulWidget {
 
 class _JoinScreenState extends State<JoinScreen> {
   late Client client;
-  List<String> serverLogs = [];
+  List<Map<String, dynamic>> serverLogs = [];
   List<Map<String, String>> players = [];
   TextEditingController controller = TextEditingController();
   TextEditingController ipController = TextEditingController();
@@ -51,9 +52,12 @@ class _JoinScreenState extends State<JoinScreen> {
 
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
-    DateTime time = DateTime.now();
-    serverLogs.add(
-        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | ${dict["Message"]} | ${dict["Username"]}");
+    DateTime timenow = DateTime.now();
+    String time = "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+    serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"],
+          "Message": dict["Message"]});
     setState(() {});
   }
 
@@ -90,16 +94,18 @@ class _JoinScreenState extends State<JoinScreen> {
   }
 
   clientChat(String name, String mes) {
-    DateTime time = DateTime.now();
-    serverLogs.add(
-        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} | $mes | $name");
+    DateTime timenow = DateTime.now();
+    String time = "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+    serverLogs.add({
+          "Time": time,
+          "Username": name,
+          "Message": mes});
     setState(() {});
   }
 
-  Widget _buildChatBubble(String log, BuildContext context) {
-    List<String> logParts = log.split(" | ");
-    String name = logParts.last;
-    String message = logParts.length > 1 ? logParts[1] : "";
+  Widget _buildChatBubble(Map<String, dynamic> log, BuildContext context) {
+    String name = log["Username"];
+    String message = log["Message"];
 
     bool isDarkModeActive = isDarkMode(context);
 
@@ -127,7 +133,7 @@ class _JoinScreenState extends State<JoinScreen> {
           Align(
             alignment: Alignment.bottomRight,
             child: Text(
-              logParts[0], // Assuming logParts[0] contains the time
+              log["Time"],
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -225,6 +231,37 @@ class _JoinScreenState extends State<JoinScreen> {
                     },
                     icon: const Icon(Icons.music_note_outlined),
                   )),
+                  Tooltip(
+                    message: "Zeichnen",
+                    child: IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  DrawingPage(
+                                      client: client,
+                                      name: namecontroller.text),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(1.0, 0.0);
+                            const end = Offset.zero;
+
+                            var tween = Tween(begin: begin, end: end);
+                            var offsetAnimation = animation.drive(tween);
+
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                      },
+                      icon: const Icon(Icons.brush_outlined)
+                      ),
+                    )
             ],
           ),
           body: Column(
@@ -358,7 +395,7 @@ class _JoinScreenState extends State<JoinScreen> {
                         child: ListView.builder(
                           itemCount: serverLogs.length,
                           itemBuilder: (context, index) {
-                            String log = serverLogs[index];
+                            Map<String, dynamic> log = serverLogs[index];
                             return Padding(
                               padding: const EdgeInsets.only(top: 15),
                               child: _buildChatBubble(log, context),
