@@ -14,7 +14,6 @@ void main() async {
   runApp(new MyApp());
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -24,10 +23,7 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
-      home: PopScope(
-        canPop: false,
-        child: HomeScreen(),
-      ),
+      home: HomeScreen()
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:convert';
 
+import 'package:Bonobuzzer/models/version.dart';
 import 'package:Bonobuzzer/screens/buzzer.dart';
 import 'package:Bonobuzzer/screens/draw.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,18 +53,58 @@ class _JoinScreenState extends State<JoinScreen> {
 
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
-    DateTime timenow = DateTime.now();
-    String time = "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
-    serverLogs.add({
+    switch (dict["Status"]) {
+      case "ImageResponse":
+        if (dict["IP"] == ipAddress) {
+          String message = "Bild erfolgreich gesendet!";
+          Duration duration = Duration(seconds: 4);
+          showSnackBarFunc(context, message, duration);
+        }
+        break;
+      case "VersionLow":
+        if (dict["IP"] == ipAddress) {
+          String message = "Version veraltet, bitte updaten!";
+          Duration duration = Duration(seconds: 20);
+          showSnackBarFunc(context, message, duration);
+        }
+      default:
+        DateTime timenow = DateTime.now();
+        String time =
+            "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
           "Time": time,
           "Username": dict["Username"],
-          "Message": dict["Message"]});
-    setState(() {});
+          "Message": dict["Message"]
+        });
+        setState(() {});
+        break;
+    }
   }
 
   onError(dynamic error) {
     // ignore: avoid_print
     print(error);
+  }
+
+  showSnackBarFunc(BuildContext context, String message, Duration duration) {
+    SnackBar snackBar = SnackBar(
+      content: Text(
+        message,
+        style: TextStyle(
+          color: isDarkMode(context) 
+          ? Colors.white 
+          : Colors.black,
+          fontSize: 16.0,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      backgroundColor: isDarkMode(context)
+          ? const Color.fromARGB(255, 0, 0, 30)
+          : Colors.grey[300],
+      duration: duration,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   _loadSavedData() async {
@@ -95,11 +136,9 @@ class _JoinScreenState extends State<JoinScreen> {
 
   clientChat(String name, String mes) {
     DateTime timenow = DateTime.now();
-    String time = "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
-    serverLogs.add({
-          "Time": time,
-          "Username": name,
-          "Message": mes});
+    String time =
+        "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+    serverLogs.add({"Time": time, "Username": name, "Message": mes});
     setState(() {});
   }
 
@@ -231,18 +270,19 @@ class _JoinScreenState extends State<JoinScreen> {
                     },
                     icon: const Icon(Icons.music_note_outlined),
                   )),
-                  Tooltip(
-                    message: "Zeichnen",
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.push(
+              Tooltip(
+                message: "Zeichnen",
+                child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
                         context,
                         PageRouteBuilder(
                           pageBuilder:
                               (context, animation, secondaryAnimation) =>
                                   DrawingPage(
                                       client: client,
-                                      name: namecontroller.text),
+                                      name: namecontroller.text,
+                                      ip: ipAddress),
                           transitionsBuilder:
                               (context, animation, secondaryAnimation, child) {
                             const begin = Offset(1.0, 0.0);
@@ -258,10 +298,9 @@ class _JoinScreenState extends State<JoinScreen> {
                           },
                         ),
                       );
-                      },
-                      icon: const Icon(Icons.brush_outlined)
-                      ),
-                    )
+                    },
+                    icon: const Icon(Icons.brush_outlined)),
+              )
             ],
           ),
           body: Column(
@@ -368,7 +407,8 @@ class _JoinScreenState extends State<JoinScreen> {
                                   'Username': namecontroller.text,
                                   'Message': "User Connected",
                                   'Status': "connected",
-                                  'IP': ipAddress
+                                  'IP': ipAddress,
+                                  "Version": globalAppVersion
                                 });
                               }
                               setState(() {});

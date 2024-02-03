@@ -9,8 +9,9 @@ double scale = 0.8;
 class DrawingPage extends StatefulWidget {
   final client;
   final String name;
+  final String? ip;
 
-  DrawingPage({Key? key, required this.client, required this.name})
+  DrawingPage({Key? key, required this.client, required this.name, required this.ip})
       : super(key: key);
 
   @override
@@ -92,7 +93,7 @@ class _DrawingPageState extends State<DrawingPage> {
                 print('Sending SVG data: $svgData');
                 points.clear();
                 widget.client.write(
-                    {"Username": widget.name, "SVG": svgData, "Status": "SVG"});
+                    {"Username": widget.name, "SVG": svgData, "Status": "SVG", "IP": widget.ip});
               } else {
                 print('Points are empty. No SVG data to send.');
               }

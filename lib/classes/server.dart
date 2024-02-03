@@ -55,6 +55,14 @@ class Server {
     }
   }
 
+  response(Map<String, dynamic> messageMap) {
+    String jsonString = jsonEncode(messageMap);
+
+    for (Socket socket in sockets) {
+      socket.write('$jsonString\n');
+    }
+  }
+
   void write(Map<String, dynamic> messageMap) {
     String jsonString = jsonEncode(messageMap);
 

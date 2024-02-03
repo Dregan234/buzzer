@@ -12,6 +12,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:Bonobuzzer/classes/server.dart';
 import 'package:Bonobuzzer/screens/user.dart';
+import 'package:Bonobuzzer/models/version.dart';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -44,21 +45,66 @@ class _HostScreenState extends State<HostScreen> {
     _initNetworkInfo();
   }
 
+  void checkVersion(String clientVersion, String hostVersion, String? ip) {
+    List<int> clientVersionNumbers =
+        clientVersion.split('.').map(int.parse).toList();
+    List<int> hostVersionNumbers =
+        hostVersion.split('.').map(int.parse).toList();
+
+    for (int i = 0; i < 3; i++) {
+      if (clientVersionNumbers[i] < hostVersionNumbers[i]) {
+        server.response({
+          "Status": "VersionLow",
+          "IP": ip,
+        });
+        return;
+      } else if (clientVersionNumbers[i] > hostVersionNumbers[i]) {
+        showSnackBarFunc(context);
+        return;
+      }
+    }
+    print("Client and host versions are the same.");
+  }
+
+  showSnackBarFunc(context) {
+    SnackBar snackBar = SnackBar(
+      content: Text(
+        "Version veraltet, bitte updaten!",
+        style: TextStyle(
+          color: isDarkMode(context) 
+          ? Colors.white 
+          : Colors.black,
+          fontSize: 16.0,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      backgroundColor: isDarkMode(context)
+          ? Color.fromARGB(255, 0, 0, 0)
+          : Colors.grey[300],
+      duration: Duration(seconds: 20),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
   onData(Uint8List data) {
     Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
     switch (dict["Status"]) {
       case "connected":
         String username = dict["Username"];
         String ip = dict["IP"] ?? "Null";
+        String version = dict["Version"];
 
         bool ipExists = players.any((player) => player["IP"] == ip);
 
         if (!ipExists) {
           players.add({"Username": username, "IP": ip});
         } else {
-          // ignore: avoid_print
           print('Player $username with IP $ip already exists.');
         }
+
+        checkVersion(version, globalAppVersion, ip);
+
         DateTime timeConnected = DateTime.now();
         String time =
             "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
@@ -139,6 +185,7 @@ class _HostScreenState extends State<HostScreen> {
         }
         break;
       case "SVG":
+        String ip = dict["IP"] ?? "Null";
         DateTime timesvg = DateTime.now();
         String time =
             "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
@@ -156,6 +203,10 @@ class _HostScreenState extends State<HostScreen> {
             duration: Duration(milliseconds: 300),
             curve: Curves.easeOut,
           );
+        });
+        server.response({
+          "Status": "ImageResponse",
+          "IP": ip,
         });
         break;
 
@@ -249,7 +300,7 @@ class _HostScreenState extends State<HostScreen> {
   }
 
   Future<void> _showVersionInfo(BuildContext context) async {
-    final appVersion = "1.0.1";
+    final appVersion = globalAppVersion;
     final makerName = "Von Bonobos für Bonobos";
 
     return showDialog(
