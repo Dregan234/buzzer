@@ -11,7 +11,8 @@ class DrawingPage extends StatefulWidget {
   final String name;
   final String? ip;
 
-  DrawingPage({Key? key, required this.client, required this.name, required this.ip})
+  DrawingPage(
+      {Key? key, required this.client, required this.name, required this.ip})
       : super(key: key);
 
   @override
@@ -90,10 +91,7 @@ class _DrawingPageState extends State<DrawingPage> {
             onPressed: () {
               if (points.isNotEmpty) {
                 String svgData = generateSvgData(size.width, size.height);
-                print('Sending SVG data: $svgData');
-                points.clear();
-                widget.client.write(
-                    {"Username": widget.name, "SVG": svgData, "Status": "SVG", "IP": widget.ip});
+                sendSVGData(svgData, widget.name, widget.ip);
               } else {
                 print('Points are empty. No SVG data to send.');
               }
@@ -133,6 +131,45 @@ class _DrawingPageState extends State<DrawingPage> {
         RegExp(r'(\w)="([^"]*)"'), (match) => '${match[1]}="${match[2]}" ');
 
     return formattedSvgData;
+  }
+
+  Future<void> sendDataChunks(
+      List<String> svgChunks, String name, String? ip, int numChunks) async {
+    try {
+      print('Sending SVG data in $numChunks chunks...');
+      await widget.client.write({
+        "Username": name,
+        "Status": "SVG",
+        "IP": ip,
+        "NumChunks": numChunks
+      });
+      await Future.delayed(Duration(milliseconds: 100));
+
+      for (String chunk in svgChunks) {
+        widget.client.transmit(chunk);
+        await Future.delayed(
+            Duration(milliseconds: 100));
+      }
+
+      print('SVG data sent successfully.');
+    } catch (e) {
+      print('Error sending SVG data: $e');
+    }
+  }
+
+  void sendSVGData(String svgData, String name, String? ip) {
+    points.clear();
+    final int chunkSize =
+        10000;
+    List<String> svgChunks = [];
+
+    for (int i = 0; i < svgData.length; i += chunkSize) {
+      int end = i + chunkSize < svgData.length ? i + chunkSize : svgData.length;
+      svgChunks.add(svgData.substring(i, end));
+    }
+
+    sendDataChunks(
+        svgChunks, name, ip, svgChunks.length);
   }
 }
 

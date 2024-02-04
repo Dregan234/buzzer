@@ -38,6 +38,13 @@ class _HostScreenState extends State<HostScreen> {
 
   ScrollController _scrollController = ScrollController();
 
+  bool expectingSVG = false;
+  String svgusername = "";
+  String svgIP = "";
+  int expectedChunks = 0;
+  int receivedChunks = 0;
+  List<String> svgChunks = [];
+
   @override
   void initState() {
     super.initState();
@@ -71,47 +78,39 @@ class _HostScreenState extends State<HostScreen> {
       content: Text(
         "Version veraltet, bitte updaten!",
         style: TextStyle(
-          color: isDarkMode(context) 
-          ? Colors.white 
-          : Colors.black,
+          color: isDarkMode(context) ? Colors.white : Colors.black,
           fontSize: 16.0,
           fontWeight: FontWeight.normal,
         ),
       ),
-      backgroundColor: isDarkMode(context)
-          ? Color.fromARGB(255, 0, 0, 0)
-          : Colors.grey[300],
+      backgroundColor:
+          isDarkMode(context) ? Color.fromARGB(255, 0, 0, 0) : Colors.grey[300],
       duration: Duration(seconds: 20),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  onData(Uint8List data) {
-    Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
-    switch (dict["Status"]) {
-      case "connected":
-        String username = dict["Username"];
-        String ip = dict["IP"] ?? "Null";
-        String version = dict["Version"];
+  void onData(Uint8List data) {
+    String svgData = String.fromCharCodes(data);
+    if (expectingSVG && !svgData.startsWith('{Username:')) {
+      // Add the received chunk to the list of chunks
+      svgChunks.add(svgData);
 
-        bool ipExists = players.any((player) => player["IP"] == ip);
+      receivedChunks++;
+      if (receivedChunks == expectedChunks) {
+        // All chunks have been received, concatenate them
+        String completeSVGData = svgChunks.join();
 
-        if (!ipExists) {
-          players.add({"Username": username, "IP": ip});
-        } else {
-          print('Player $username with IP $ip already exists.');
-        }
-
-        checkVersion(version, globalAppVersion, ip);
-
-        DateTime timeConnected = DateTime.now();
+        DateTime timesvg = DateTime.now();
         String time =
-            "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
+            "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
+
         serverLogs.add({
           "Time": time,
-          "Username": dict["Username"] + " connected",
-          "Message": dict["Username"] + " connected"
+          "Username": svgusername,
+          "Message": completeSVGData, // Add the complete SVG data
+          "SVG": true
         });
         setState(() {});
 
@@ -122,48 +121,126 @@ class _HostScreenState extends State<HostScreen> {
             curve: Curves.easeOut,
           );
         });
-        break;
 
-      case "disconnected":
-        String ip = dict["IP"] ?? "Null";
-
-        players.removeWhere((player) => player["IP"] == ip);
-
-        DateTime timeDisconnected = DateTime.now();
-        String time =
-            "${timeDisconnected.hour.toString().padLeft(2, '0')}:${timeDisconnected.minute.toString().padLeft(2, '0')}";
-        serverLogs.add({
-          "Time": time,
-          "Username": dict["Username"] + " disconnected",
-          "Message": dict["Username"] + " disconnected"
+        server.response({
+          "Status": "ImageResponse",
+          "IP": svgIP,
         });
-        setState(() {});
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
-        break;
+        receivedChunks = 0;
+        expectedChunks = 0;
+        svgChunks.clear();
+        expectingSVG = false;
+      }
+    } else {
+      // Normal JSON decoding
+      Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
+      switch (dict["Status"]) {
+        case "connected":
+          String username = dict["Username"];
+          String ip = dict["IP"] ?? "Null";
+          String version = dict["Version"];
 
-      case "Buzzer":
-        if (!isSoundPlaying) {
-          isSoundPlaying = true;
-          String buzzerstring = dict["Sound"] ?? "buzzer.mp3";
-          DateTime now = DateTime.now();
-          String currentTime =
-              "${now.hour}:${now.minute.toString().padLeft(2, '0')}"
-              ":${now.second.toString().padLeft(2, '0')}.${now.millisecond}";
-          AssetSource buzzersound = AssetSource(buzzerstring);
+          bool ipExists = players.any((player) => player["IP"] == ip);
 
-          _audioPlayer.play(buzzersound);
+          if (!ipExists) {
+            players.add({"Username": username, "IP": ip});
+          } else {
+            print('Player $username with IP $ip already exists.');
+          }
 
-          dict["Message"] = "${dict["Message"]} $currentTime";
-          DateTime timenow = DateTime.now();
+          checkVersion(version, globalAppVersion, ip);
+
+          DateTime timeConnected = DateTime.now();
           String time =
-              "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+              "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
+          serverLogs.add({
+            "Time": time,
+            "Username": dict["Username"] + " connected",
+            "Message": dict["Username"] + " connected"
+          });
+          setState(() {});
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          });
+          break;
+
+        case "disconnected":
+          String ip = dict["IP"] ?? "Null";
+
+          players.removeWhere((player) => player["IP"] == ip);
+
+          DateTime timeDisconnected = DateTime.now();
+          String time =
+              "${timeDisconnected.hour.toString().padLeft(2, '0')}:${timeDisconnected.minute.toString().padLeft(2, '0')}";
+          serverLogs.add({
+            "Time": time,
+            "Username": dict["Username"] + " disconnected",
+            "Message": dict["Username"] + " disconnected"
+          });
+          setState(() {});
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          });
+          break;
+
+        case "Buzzer":
+          if (!isSoundPlaying) {
+            isSoundPlaying = true;
+            String buzzerstring = dict["Sound"] ?? "buzzer.mp3";
+            DateTime now = DateTime.now();
+            String currentTime =
+                "${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond}";
+            AssetSource buzzersound = AssetSource(buzzerstring);
+
+            _audioPlayer.play(buzzersound);
+
+            dict["Message"] = "${dict["Message"]} $currentTime";
+            DateTime timenow = DateTime.now();
+            String time =
+                "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
+            serverLogs.add({
+              "Time": time,
+              "Username": dict["Username"],
+              "Message": dict["Message"]
+            });
+            setState(() {});
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            });
+
+            Future.delayed(const Duration(seconds: 2), () {
+              isSoundPlaying = false;
+            });
+          }
+          break;
+
+        case "SVG":
+          expectingSVG = true;
+          svgusername = dict["Username"];
+          svgIP = dict["IP"] ?? "";
+          expectedChunks = dict["NumChunks"];
+          break;
+
+        default:
+          DateTime timeDefault = DateTime.now();
+          String time =
+              "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}";
           serverLogs.add({
             "Time": time,
             "Username": dict["Username"],
@@ -178,57 +255,8 @@ class _HostScreenState extends State<HostScreen> {
               curve: Curves.easeOut,
             );
           });
-
-          Future.delayed(const Duration(seconds: 2), () {
-            isSoundPlaying = false;
-          });
-        }
-        break;
-      case "SVG":
-        String ip = dict["IP"] ?? "Null";
-        DateTime timesvg = DateTime.now();
-        String time =
-            "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
-        serverLogs.add({
-          "Time": time,
-          "Username": dict["Username"],
-          "Message": dict["SVG"],
-          "SVG": true
-        });
-        setState(() {});
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
-        server.response({
-          "Status": "ImageResponse",
-          "IP": ip,
-        });
-        break;
-
-      default:
-        DateTime timeDefault = DateTime.now();
-        String time =
-            "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}";
-        serverLogs.add({
-          "Time": time,
-          "Username": dict["Username"],
-          "Message": dict["Message"]
-        });
-        setState(() {});
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
-        break;
+          break;
+      }
     }
   }
 
@@ -255,6 +283,10 @@ class _HostScreenState extends State<HostScreen> {
     String message = log["Message"];
     bool isDarkModeActive = isDarkMode(context);
     print(message);
+
+    if (log["SVG"] == true) {
+      message = checkAndFixSvgData(message);
+    }
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -297,6 +329,18 @@ class _HostScreenState extends State<HostScreen> {
         ],
       ),
     );
+  }
+
+  String checkAndFixSvgData(String data) {
+    String fixedData = data;
+    // Check for missing '<' or '>'
+    if (!data.contains('<')) {
+      fixedData = '<$fixedData';
+    }
+    if (!data.contains('>')) {
+      fixedData = '$fixedData>';
+    }
+    return fixedData;
   }
 
   Future<void> _showVersionInfo(BuildContext context) async {
