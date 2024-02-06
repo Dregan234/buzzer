@@ -94,7 +94,6 @@ class _HostScreenState extends State<HostScreen> {
   void onData(Uint8List data) {
     String svgData = String.fromCharCodes(data);
     if (expectingSVG && !svgData.startsWith('{Username:')) {
-      // Add the received chunk to the list of chunks
       svgChunks.add(svgData);
 
       receivedChunks++;
@@ -282,7 +281,6 @@ class _HostScreenState extends State<HostScreen> {
     String name = log["Username"];
     String message = log["Message"];
     bool isDarkModeActive = isDarkMode(context);
-    print(message);
 
     if (log["SVG"] == true) {
       message = checkAndFixSvgData(message);

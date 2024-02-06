@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -23,6 +24,8 @@ class _DrawingPageState extends State<DrawingPage> {
   List<Offset> points = [];
   bool isEraserMode = false;
   late Size size;
+  Color backgroundColor = Colors.white; // Background color
+  Color selectedColor = Colors.black; // Default stroke color
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +51,13 @@ class _DrawingPageState extends State<DrawingPage> {
             },
             child: CustomPaint(
               painter: DrawingPainter(
-                  points: points,
-                  isEraserMode: isEraserMode,
-                  size: size,
-                  isDarkMode: darkmode),
+                points: points,
+                isEraserMode: isEraserMode,
+                size: size,
+                isDarkMode: darkmode,
+                backgroundColor: backgroundColor,
+                selectedColor: selectedColor,
+              ),
               size: Size.infinite,
             ),
           );
@@ -68,6 +74,7 @@ class _DrawingPageState extends State<DrawingPage> {
                 points.clear();
               });
             },
+            mini: true,
             child: Icon(Icons.clear),
           ),
           SizedBox(height: 16),
@@ -83,7 +90,26 @@ class _DrawingPageState extends State<DrawingPage> {
                 }
               });
             },
+            mini: true,
             child: Icon(Icons.undo),
+          ),
+          SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: "colorbtn",
+            onPressed: () {
+              _showColorPicker(isBackground: false);
+            },
+            mini: true,
+            child: Icon(Icons.color_lens),
+          ),
+          SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: "backgroundbtn",
+            onPressed: () {
+              _showColorPicker(isBackground: true);
+            },
+            mini: true,
+            child: Icon(Icons.format_paint),
           ),
           SizedBox(height: 16),
           FloatingActionButton(
@@ -96,6 +122,7 @@ class _DrawingPageState extends State<DrawingPage> {
                 print('Points are empty. No SVG data to send.');
               }
             },
+            mini: true,
             child: Icon(Icons.send),
           ),
         ],
@@ -117,12 +144,14 @@ class _DrawingPageState extends State<DrawingPage> {
   String generateSvgData(double width, double height) {
     StringBuffer svgData =
         StringBuffer('<svg width="$width" height="$height">');
-    svgData.write('<rect width="$width" height="$height" fill="white" />');
+    svgData.write(
+        '<rect width="$width" height="$height" fill="${colorToHex(backgroundColor)}" />');
 
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i] != Offset(-1, -1) && points[i + 1] != Offset(-1, -1)) {
+        String colorHex = colorToHex(selectedColor); // Convert Color to hex
         svgData.write(
-            '<line x1="${points[i].dx}" y1="${points[i].dy}" x2="${points[i + 1].dx}" y2="${points[i + 1].dy}" stroke="black" stroke-width="2"/>');
+            '<line x1="${points[i].dx}" y1="${points[i].dy}" x2="${points[i + 1].dx}" y2="${points[i + 1].dy}" stroke="$colorHex" stroke-width="2"/>');
       }
     }
     svgData.write('</svg>');
@@ -131,6 +160,10 @@ class _DrawingPageState extends State<DrawingPage> {
         RegExp(r'(\w)="([^"]*)"'), (match) => '${match[1]}="${match[2]}" ');
 
     return formattedSvgData;
+  }
+
+  String colorToHex(Color color) {
+    return '#${color.value.toRadixString(16).substring(2)}';
   }
 
   Future<void> sendDataChunks(
@@ -147,8 +180,7 @@ class _DrawingPageState extends State<DrawingPage> {
 
       for (String chunk in svgChunks) {
         widget.client.transmit(chunk);
-        await Future.delayed(
-            Duration(milliseconds: 100));
+        await Future.delayed(Duration(milliseconds: 50));
       }
 
       print('SVG data sent successfully.');
@@ -159,8 +191,7 @@ class _DrawingPageState extends State<DrawingPage> {
 
   void sendSVGData(String svgData, String name, String? ip) {
     points.clear();
-    final int chunkSize =
-        10000;
+    final int chunkSize = 50000;
     List<String> svgChunks = [];
 
     for (int i = 0; i < svgData.length; i += chunkSize) {
@@ -168,8 +199,45 @@ class _DrawingPageState extends State<DrawingPage> {
       svgChunks.add(svgData.substring(i, end));
     }
 
-    sendDataChunks(
-        svgChunks, name, ip, svgChunks.length);
+    sendDataChunks(svgChunks, name, ip, svgChunks.length);
+  }
+
+  void _showColorPicker({required bool isBackground}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+              isBackground ? "Wähle Hintergrund Farbe" : "Wähle Stift Farbe"),
+          content: SingleChildScrollView(
+            child: MaterialColorPicker(
+              circleSize: 50.0,
+              spacing: 10.0,
+              elevation: 10.0,
+              allowShades: true,
+              onColorChange: (color) {
+                setState(() {
+                  if (isBackground) {
+                    backgroundColor = color;
+                  } else {
+                    selectedColor = color;
+                  }
+                });
+              },
+              selectedColor: isBackground ? backgroundColor : selectedColor,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -178,21 +246,26 @@ class DrawingPainter extends CustomPainter {
   final bool isEraserMode;
   final Size size;
   final bool isDarkMode;
+  final Color backgroundColor;
+  final Color selectedColor;
 
   DrawingPainter({
     required this.points,
     required this.isEraserMode,
     required this.size,
     required this.isDarkMode,
+    required this.backgroundColor,
+    required this.selectedColor,
   });
 
   @override
   void paint(Canvas canvas, Size _) {
     Paint paint = Paint()
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.0
+      ..color = selectedColor; // Set the selected color
 
-    Paint backgroundPaint = Paint()..color = Colors.white;
+    Paint backgroundPaint = Paint()..color = backgroundColor;
 
     double rectangleWidth = size.width * scale;
     double rectangleHeight = size.height * scale;
@@ -225,7 +298,6 @@ class DrawingPainter extends CustomPainter {
     // Draw lines
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i] != Offset(-1, -1) && points[i + 1] != Offset(-1, -1)) {
-        paint.color = Colors.black;
         canvas.drawLine(points[i], points[i + 1], paint);
       }
     }
