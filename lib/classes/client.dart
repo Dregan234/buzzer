@@ -49,6 +49,10 @@ class Client {
   }
 }
 
+  void transmit(String message){
+    socket?.write(message);
+  }
+
   void disconnect() {
     socket?.destroy();
     connected = false;

@@ -13,6 +13,10 @@ class Server {
   ServerSocket? server;
   bool running = false;
   List<Socket> sockets = [];
+  StreamController<Uint8List> messageQueueController =
+      StreamController.broadcast();
+
+  Stream<Uint8List> get messageQueue => messageQueueController.stream;
 
   start() async {
     runZoned(() async {
@@ -77,6 +81,8 @@ class Server {
     }
     socket.listen((Uint8List data) {
       onData!(data);
+      // Add the incoming data to the message queue
+      messageQueueController.add(data);
     });
   }
 }
