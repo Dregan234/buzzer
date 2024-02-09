@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
@@ -41,8 +42,8 @@ class Client {
   }
 
   void write(Map<String, dynamic> messageMap) {
-  try {
-    String jsonString = jsonEncode(messageMap);
+    try {
+      String jsonString = jsonEncode(messageMap);
     socket?.write(jsonString);
   } catch (e) {
     print('Error writing to socket: $e');
@@ -56,5 +57,11 @@ class Client {
   void disconnect() {
     socket?.destroy();
     connected = false;
+  }
+
+  Future<void> streamData(Stream<List<int>> dataStream) async {
+    await for (var data in dataStream) {
+      socket?.add(data);
+    }
   }
 }

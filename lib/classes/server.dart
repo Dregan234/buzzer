@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 
-import '../models/model.dart';
+typedef Uint8ListCallback = void Function(Uint8List);
+typedef DynamicCallback = void Function(dynamic);
 
 class Server {
   Server({this.onError, this.onData});
@@ -12,11 +13,9 @@ class Server {
   DynamicCallback? onError;
   ServerSocket? server;
   bool running = false;
+  bool svgTransmissionInProgress =
+      false; // Flag to track SVG transmission status
   List<Socket> sockets = [];
-  StreamController<Uint8List> messageQueueController =
-      StreamController.broadcast();
-
-  Stream<Uint8List> get messageQueue => messageQueueController.stream;
 
   start() async {
     runZoned(() async {
@@ -75,14 +74,38 @@ class Server {
     onData!(messageBytes);
   }
 
-  onRequest(Socket socket) {
+  void onRequest(Socket socket) {
     if (!sockets.contains(socket)) {
       sockets.add(socket);
     }
+    String clientIP = socket.remoteAddress.address;
     socket.listen((Uint8List data) {
-      onData!(data);
-      // Add the incoming data to the message queue
-      messageQueueController.add(data);
+      if (svgTransmissionInProgress) {
+        Map<String, dynamic> messageMap = {
+          'Status': 'Transmission ongoing',
+          'IP': clientIP,
+        };
+        String jsonString = jsonEncode(messageMap);
+        Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+        socket.write(messageBytes);
+      } else {
+        Map<String, dynamic> messageMap = {
+          'Status': 'Can transmit',
+          'IP': clientIP,
+        };
+        String jsonString = jsonEncode(messageMap);
+        Uint8List messageBytes = Uint8List.fromList(jsonString.codeUnits);
+        socket.write(messageBytes);
+      }
+      return;
     });
+  }
+
+  void startSVGTransmission() {
+    svgTransmissionInProgress = true;
+  }
+
+  void endSVGTransmission() {
+    svgTransmissionInProgress = false;
   }
 }

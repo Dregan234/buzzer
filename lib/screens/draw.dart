@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
+import 'dart:async';
+import 'dart:convert';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -20,8 +22,15 @@ class DrawingPage extends StatefulWidget {
   _DrawingPageState createState() => _DrawingPageState();
 }
 
+class ColoredPoint {
+  final Offset point;
+  final Color color;
+
+  ColoredPoint({required this.point, required this.color});
+}
+
 class _DrawingPageState extends State<DrawingPage> {
-  List<Offset> points = [];
+  List<ColoredPoint> points = [];
   bool isEraserMode = false;
   late Size size;
   Color backgroundColor = Colors.white; // Background color
@@ -42,12 +51,14 @@ class _DrawingPageState extends State<DrawingPage> {
               setState(() {
                 Offset localPosition = details.localPosition;
                 if (_isInsideDrawingArea(localPosition, size)) {
-                  points.add(localPosition);
+                  points.add(
+                      ColoredPoint(point: localPosition, color: selectedColor));
                 }
               });
             },
             onPanEnd: (details) {
-              points.add(Offset(-1, -1));
+              points.add(
+                  ColoredPoint(point: Offset(-1, -1), color: selectedColor));
             },
             child: CustomPaint(
               painter: DrawingPainter(
@@ -56,7 +67,6 @@ class _DrawingPageState extends State<DrawingPage> {
                 size: size,
                 isDarkMode: darkmode,
                 backgroundColor: backgroundColor,
-                selectedColor: selectedColor,
               ),
               size: Size.infinite,
             ),
@@ -84,9 +94,8 @@ class _DrawingPageState extends State<DrawingPage> {
               setState(() {
                 if (points.isNotEmpty) {
                   int removeCount = points.length >= 40 ? 40 : points.length;
-                  for (int i = 0; i < removeCount; i++) {
-                    points.removeLast();
-                  }
+                  points.removeRange(
+                      points.length - removeCount, points.length);
                 }
               });
             },
@@ -148,10 +157,11 @@ class _DrawingPageState extends State<DrawingPage> {
         '<rect width="$width" height="$height" fill="${colorToHex(backgroundColor)}" />');
 
     for (int i = 0; i < points.length - 1; i++) {
-      if (points[i] != Offset(-1, -1) && points[i + 1] != Offset(-1, -1)) {
-        String colorHex = colorToHex(selectedColor); // Convert Color to hex
+      if (points[i].point != Offset(-1, -1) &&
+          points[i + 1].point != Offset(-1, -1)) {
+        String colorHex = colorToHex(points[i].color); // Convert Color to hex
         svgData.write(
-            '<line x1="${points[i].dx}" y1="${points[i].dy}" x2="${points[i + 1].dx}" y2="${points[i + 1].dy}" stroke="$colorHex" stroke-width="2"/>');
+            '<line x1="${points[i].point.dx}" y1="${points[i].point.dy}" x2="${points[i + 1].point.dx}" y2="${points[i + 1].point.dy}" stroke="$colorHex" stroke-width="2"/>');
       }
     }
     svgData.write('</svg>');
@@ -166,40 +176,25 @@ class _DrawingPageState extends State<DrawingPage> {
     return '#${color.value.toRadixString(16).substring(2)}';
   }
 
-  Future<void> sendDataChunks(
-      List<String> svgChunks, String name, String? ip, int numChunks) async {
-    try {
-      print('Sending SVG data in $numChunks chunks...');
-      await widget.client.write({
-        "Username": name,
-        "Status": "SVG",
-        "IP": ip,
-        "NumChunks": numChunks
-      });
-      await Future.delayed(Duration(milliseconds: 100));
-
-      for (String chunk in svgChunks) {
-        widget.client.transmit(chunk);
-        await Future.delayed(Duration(milliseconds: 50));
-      }
-
-      print('SVG data sent successfully.');
-    } catch (e) {
-      print('Error sending SVG data: $e');
-    }
-  }
-
-  void sendSVGData(String svgData, String name, String? ip) {
+  void sendSVGData(String svgData, String name, String? ip) async {
     points.clear();
-    final int chunkSize = 50000;
-    List<String> svgChunks = [];
 
-    for (int i = 0; i < svgData.length; i += chunkSize) {
-      int end = i + chunkSize < svgData.length ? i + chunkSize : svgData.length;
-      svgChunks.add(svgData.substring(i, end));
+    StreamController<List<int>> streamController =
+        StreamController<List<int>>();
+    streamController.add(utf8.encode(svgData));
+    streamController.close();
+
+    await widget.client
+        .write({'Username': widget.name, 'Status': "SVG", 'IP': widget.ip});
+
+    await Future.delayed(Duration(milliseconds: 100));
+
+    try {
+      await widget.client.streamData(streamController.stream);
+      print('SVG data streamed successfully.');
+    } catch (e) {
+      print('Error streaming SVG data: $e');
     }
-
-    sendDataChunks(svgChunks, name, ip, svgChunks.length);
   }
 
   void _showColorPicker({required bool isBackground}) {
@@ -208,7 +203,7 @@ class _DrawingPageState extends State<DrawingPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-              isBackground ? "Wähle Hintergrund Farbe" : "Wähle Stift Farbe"),
+              isBackground ? "Choose Background Color" : "Choose Stroke Color"),
           content: SingleChildScrollView(
             child: MaterialColorPicker(
               circleSize: 50.0,
@@ -242,12 +237,11 @@ class _DrawingPageState extends State<DrawingPage> {
 }
 
 class DrawingPainter extends CustomPainter {
-  final List<Offset> points;
+  final List<ColoredPoint> points;
   final bool isEraserMode;
   final Size size;
   final bool isDarkMode;
   final Color backgroundColor;
-  final Color selectedColor;
 
   DrawingPainter({
     required this.points,
@@ -255,15 +249,13 @@ class DrawingPainter extends CustomPainter {
     required this.size,
     required this.isDarkMode,
     required this.backgroundColor,
-    required this.selectedColor,
   });
 
   @override
   void paint(Canvas canvas, Size _) {
     Paint paint = Paint()
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.0
-      ..color = selectedColor; // Set the selected color
+      ..strokeWidth = 2.0;
 
     Paint backgroundPaint = Paint()..color = backgroundColor;
 
@@ -295,10 +287,11 @@ class DrawingPainter extends CustomPainter {
       borderPaint,
     );
 
-    // Draw lines
     for (int i = 0; i < points.length - 1; i++) {
-      if (points[i] != Offset(-1, -1) && points[i + 1] != Offset(-1, -1)) {
-        canvas.drawLine(points[i], points[i + 1], paint);
+      if (points[i].point != Offset(-1, -1) &&
+          points[i + 1].point != Offset(-1, -1)) {
+        paint.color = points[i].color; // Set the color for each segment
+        canvas.drawLine(points[i].point, points[i + 1].point, paint);
       }
     }
   }

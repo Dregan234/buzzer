@@ -93,12 +93,12 @@ class _HostScreenState extends State<HostScreen> {
 
   void onData(Uint8List data) {
     String svgData = String.fromCharCodes(data);
-    if (expectingSVG && !svgData.startsWith('{Username:')) {
-      svgChunks.add(svgData);
 
-      receivedChunks++;
-      if (receivedChunks == expectedChunks) {
-        // All chunks have been received, concatenate them
+    if (expectingSVG) {
+      // Collect SVG data until streaming is complete
+      svgChunks.add(svgData);
+      if (svgData.endsWith('</svg>')) {
+        // SVG streaming is complete
         String completeSVGData = svgChunks.join();
 
         DateTime timesvg = DateTime.now();
@@ -108,7 +108,7 @@ class _HostScreenState extends State<HostScreen> {
         serverLogs.add({
           "Time": time,
           "Username": svgusername,
-          "Message": completeSVGData, // Add the complete SVG data
+          "Message": completeSVGData,
           "SVG": true
         });
         setState(() {});
@@ -126,8 +126,6 @@ class _HostScreenState extends State<HostScreen> {
           "IP": svgIP,
         });
 
-        receivedChunks = 0;
-        expectedChunks = 0;
         svgChunks.clear();
         expectingSVG = false;
       }
@@ -233,7 +231,6 @@ class _HostScreenState extends State<HostScreen> {
           expectingSVG = true;
           svgusername = dict["Username"];
           svgIP = dict["IP"] ?? "";
-          expectedChunks = dict["NumChunks"];
           break;
 
         default:
