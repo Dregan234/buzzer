@@ -13,8 +13,7 @@ class Server {
   DynamicCallback? onError;
   ServerSocket? server;
   bool running = false;
-  bool svgTransmissionInProgress =
-      false; // Flag to track SVG transmission status
+  bool svgTransmissionInProgress = false;
   List<Socket> sockets = [];
 
   start() async {
@@ -82,7 +81,7 @@ class Server {
     socket.listen((Uint8List data) {
       if (svgTransmissionInProgress) {
         Map<String, dynamic> messageMap = {
-          'Status': 'Transmission ongoing',
+          'Status': 'transmitclosed',
           'IP': clientIP,
         };
         String jsonString = jsonEncode(messageMap);
@@ -90,7 +89,7 @@ class Server {
         socket.write(messageBytes);
       } else {
         Map<String, dynamic> messageMap = {
-          'Status': 'Can transmit',
+          'Status': 'transmitopen',
           'IP': clientIP,
         };
         String jsonString = jsonEncode(messageMap);

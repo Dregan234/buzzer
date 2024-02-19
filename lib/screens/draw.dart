@@ -159,7 +159,7 @@ class _DrawingPageState extends State<DrawingPage> {
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i].point != Offset(-1, -1) &&
           points[i + 1].point != Offset(-1, -1)) {
-        String colorHex = colorToHex(points[i].color); // Convert Color to hex
+        String colorHex = colorToHex(points[i].color);
         svgData.write(
             '<line x1="${points[i].point.dx}" y1="${points[i].point.dy}" x2="${points[i + 1].point.dx}" y2="${points[i + 1].point.dy}" stroke="$colorHex" stroke-width="2"/>');
       }
@@ -203,7 +203,7 @@ class _DrawingPageState extends State<DrawingPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-              isBackground ? "Choose Background Color" : "Choose Stroke Color"),
+              isBackground ? "Wähle Hintergrundfarbe" : "Wähle Stiftfarbe"),
           content: SingleChildScrollView(
             child: MaterialColorPicker(
               circleSize: 50.0,

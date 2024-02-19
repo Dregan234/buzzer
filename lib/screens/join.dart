@@ -37,6 +37,7 @@ class _JoinScreenState extends State<JoinScreen> {
   final _networkInfo = NetworkInfo();
   String? ipAddress = 'Loading...';
   bool isExpandedPanel = false;
+  bool canTransmit = true;
 
   @override
   void initState() {
@@ -67,6 +68,10 @@ class _JoinScreenState extends State<JoinScreen> {
           Duration duration = Duration(seconds: 20);
           showSnackBarFunc(context, message, duration);
         }
+      case "transmitclosed":
+        canTransmit = false;
+      case "transmitopen":
+        canTransmit = true;
       default:
         DateTime timenow = DateTime.now();
         String time =
@@ -506,10 +511,13 @@ class _JoinScreenState extends State<JoinScreen> {
                     ),
                     MaterialButton(
                       onPressed: () {
-                        client.write({
+                        while(canTransmit == false){
+                          client.write({
                           'Username': namecontroller.text,
                           'Message': controller.text,
                         });
+                          Future.delayed(Duration(milliseconds: 10));
+                        }
                         clientChat(namecontroller.text, controller.text);
                         controller.text = "";
                       },

@@ -95,10 +95,9 @@ class _HostScreenState extends State<HostScreen> {
     String svgData = String.fromCharCodes(data);
 
     if (expectingSVG) {
-      // Collect SVG data until streaming is complete
+      server.startSVGTransmission();
       svgChunks.add(svgData);
       if (svgData.endsWith('</svg>')) {
-        // SVG streaming is complete
         String completeSVGData = svgChunks.join();
 
         DateTime timesvg = DateTime.now();
@@ -128,9 +127,9 @@ class _HostScreenState extends State<HostScreen> {
 
         svgChunks.clear();
         expectingSVG = false;
+        server.endSVGTransmission();
       }
     } else {
-      // Normal JSON decoding
       Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
       switch (dict["Status"]) {
         case "connected":
