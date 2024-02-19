@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
-import 'dart:async';
-import 'dart:convert';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -152,24 +150,20 @@ class _DrawingPageState extends State<DrawingPage> {
 
   String generateSvgData(double width, double height) {
     StringBuffer svgData =
-        StringBuffer('<svg width="$width" height="$height">');
+        StringBuffer("<svg width='$width' height='$height'>");
     svgData.write(
-        '<rect width="$width" height="$height" fill="${colorToHex(backgroundColor)}" />');
+        "<rect width='$width' height='$height' fill='${colorToHex(backgroundColor)}' />");
 
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i].point != Offset(-1, -1) &&
           points[i + 1].point != Offset(-1, -1)) {
         String colorHex = colorToHex(points[i].color);
         svgData.write(
-            '<line x1="${points[i].point.dx}" y1="${points[i].point.dy}" x2="${points[i + 1].point.dx}" y2="${points[i + 1].point.dy}" stroke="$colorHex" stroke-width="2"/>');
+            "<line x1='${points[i].point.dx}' y1='${points[i].point.dy}' x2='${points[i + 1].point.dx}' y2='${points[i + 1].point.dy}' stroke='$colorHex' stroke-width='2'/>");
       }
     }
     svgData.write('</svg>');
-
-    String formattedSvgData = svgData.toString().replaceAllMapped(
-        RegExp(r'(\w)="([^"]*)"'), (match) => '${match[1]}="${match[2]}" ');
-
-    return formattedSvgData;
+    return svgData.toString();
   }
 
   String colorToHex(Color color) {
@@ -179,22 +173,8 @@ class _DrawingPageState extends State<DrawingPage> {
   void sendSVGData(String svgData, String name, String? ip) async {
     points.clear();
 
-    StreamController<List<int>> streamController =
-        StreamController<List<int>>();
-    streamController.add(utf8.encode(svgData));
-    streamController.close();
-
     await widget.client
-        .write({'Username': widget.name, 'Status': "SVG", 'IP': widget.ip});
-
-    await Future.delayed(Duration(milliseconds: 100));
-
-    try {
-      await widget.client.streamData(streamController.stream);
-      print('SVG data streamed successfully.');
-    } catch (e) {
-      print('Error streaming SVG data: $e');
-    }
+        .write({'Username': widget.name, 'Status': "SVG", 'IP': widget.ip, "SVG-data": svgData});
   }
 
   void _showColorPicker({required bool isBackground}) {

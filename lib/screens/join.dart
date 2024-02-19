@@ -52,8 +52,8 @@ class _JoinScreenState extends State<JoinScreen> {
     _initNetworkInfo();
   }
 
-  onData(Uint8List data) {
-    Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
+  onData(String data) {
+    Map<String, dynamic> dict = jsonDecode(data);
     switch (dict["Status"]) {
       case "ImageResponse":
         if (dict["IP"] == ipAddress) {
@@ -511,13 +511,10 @@ class _JoinScreenState extends State<JoinScreen> {
                     ),
                     MaterialButton(
                       onPressed: () {
-                        while(canTransmit == false){
                           client.write({
                           'Username': namecontroller.text,
                           'Message': controller.text,
                         });
-                          Future.delayed(Duration(milliseconds: 10));
-                        }
                         clientChat(namecontroller.text, controller.text);
                         controller.text = "";
                       },
