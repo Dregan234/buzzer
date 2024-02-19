@@ -1,9 +1,9 @@
-import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 
-import 'package:Bonobuzzer/models/model.dart';
+typedef StringCallback = void Function(String);
+typedef DynamicCallback = void Function(dynamic);
 
 class Client {
   Client({
@@ -15,53 +15,107 @@ class Client {
 
   String hostname;
   int port;
-  Uint8ListCallback? onData;
+  StringCallback? onData;
   DynamicCallback? onError;
   bool connected = false;
+  http.Client httpClient = http.Client();
+  HttpServer? server;
+  bool running = false;
 
-  Socket? socket;
+  start() async {
+    try {
+      server = await HttpServer.bind('0.0.0.0', 4040);
+      running = true;
+      server!.listen(onRequest);
 
-  // Initialize the socket here
-  Future<void> initSocket() async {
-    socket = await Socket.connect(hostname, port);
-    socket?.listen(
-      onData,
-      onError: onError,
-      onDone: disconnect,
-      cancelOnError: false,
-    );
+    } catch (e) {
+      onError!(e);
+    }
+  }
+
+  void onRequest(HttpRequest request) async {
+    if (request.method == 'POST') {
+      await handlePost(request);
+    } else {
+      request.response
+        ..statusCode = HttpStatus.methodNotAllowed
+        ..write('Unsupported request: ${request.method}.')
+        ..close();
+    }
+  }
+
+    Future<void> handlePost(HttpRequest request) async {
+    try {
+      var jsonString = await utf8.decoder.bind(request).join();
+      var data = jsonDecode(jsonString);
+
+      print('Received data on server: $data');
+
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..write('Received data: $data')
+        ..close();
+
+    onData!(jsonString);
+
+    } catch (e) {
+      print('Error handling POST request: $e');
+      request.response
+        ..statusCode = HttpStatus.internalServerError
+        ..write('Error handling POST request: $e')
+        ..close();
+    }
   }
 
   Future<void> connect() async {
     try {
-      await initSocket();
       connected = true;
+      start();
     } on Exception catch (exception) {
-      onData!(Uint8List.fromList("Error : $exception".codeUnits));
+      onData!("Error : $exception".codeUnits as String);
     }
   }
 
-  void write(Map<String, dynamic> messageMap) {
+  void write(Map<String, dynamic> messageMap) async {
     try {
       String jsonString = jsonEncode(messageMap);
-    socket?.write(jsonString);
-  } catch (e) {
-    print('Error writing to socket: $e');
-  }
-}
+      final response = await httpClient.post(
+        Uri.parse('http://$hostname:$port'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonString,
+      );
 
-  void transmit(String message){
-    socket?.write(message);
+      if (response.statusCode == 200) {
+        // Successfully sent data
+        print('Data sent successfully');
+      } else {
+        // Handle error
+        print('Error sending data. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error writing to server: $e');
+    }
+  }
+
+  void transmit(String message) async {
+    // Example: Sending a simple message
+    final response = await httpClient.post(
+      Uri.parse('http://$hostname:$port'),
+      headers: {'Content-Type': 'text/plain'},
+      body: message,
+    );
+
+    if (response.statusCode == 200) {
+      // Successfully sent data
+      print('Message sent successfully');
+    } else {
+      // Handle error
+      print('Error sending message. Status code: ${response.statusCode}');
+    }
   }
 
   void disconnect() {
-    socket?.destroy();
+    // Disconnect logic if needed
     connected = false;
-  }
-
-  Future<void> streamData(Stream<List<int>> dataStream) async {
-    await for (var data in dataStream) {
-      socket?.add(data);
-    }
   }
 }

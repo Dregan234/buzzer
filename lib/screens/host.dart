@@ -30,6 +30,7 @@ class _HostScreenState extends State<HostScreen> {
   late Server server;
   List<Map<String, dynamic>> serverLogs = [];
   List<Map<String, String>> players = [];
+  List<String> playerIPS = [];
   TextEditingController controller = TextEditingController();
   final _audioPlayer = AudioPlayer();
   String? ipAddress = 'Loading...';
@@ -37,14 +38,6 @@ class _HostScreenState extends State<HostScreen> {
   bool isSoundPlaying = false;
 
   ScrollController _scrollController = ScrollController();
-
-  bool expectingSVG = false;
-  String svgusername = "";
-  String svgIP = "";
-  int expectedChunks = 0;
-  int receivedChunks = 0;
-  List<String> svgChunks = [];
-
   @override
   void initState() {
     super.initState();
@@ -63,7 +56,7 @@ class _HostScreenState extends State<HostScreen> {
         server.response({
           "Status": "VersionLow",
           "IP": ip,
-        });
+        }, ip);
         return;
       } else if (clientVersionNumbers[i] > hostVersionNumbers[i]) {
         showSnackBarFunc(context);
@@ -91,25 +84,32 @@ class _HostScreenState extends State<HostScreen> {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  void onData(Uint8List data) {
-    String svgData = String.fromCharCodes(data);
+  void onData(String data) {
+    Map<String, dynamic> dict = jsonDecode(data);
+    switch (dict["Status"]) {
+      case "connected":
+        String username = dict["Username"];
+        String ip = dict["IP"] ?? "Null";
+        String version = dict["Version"];
 
-    if (expectingSVG) {
-      // Collect SVG data until streaming is complete
-      svgChunks.add(svgData);
-      if (svgData.endsWith('</svg>')) {
-        // SVG streaming is complete
-        String completeSVGData = svgChunks.join();
+        bool ipExists = players.any((player) => player["IP"] == ip);
 
-        DateTime timesvg = DateTime.now();
+        if (!ipExists) {
+          players.add({"Username": username, "IP": ip});
+          playerIPS.add(ip);
+        } else {
+          print('Player $username with IP $ip already exists.');
+        }
+
+        checkVersion(version, globalAppVersion, ip);
+
+        DateTime timeConnected = DateTime.now();
         String time =
-            "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
-
+            "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
         serverLogs.add({
           "Time": time,
-          "Username": svgusername,
-          "Message": completeSVGData,
-          "SVG": true
+          "Username": dict["Username"] + " connected",
+          "Message": dict["Username"] + " connected"
         });
         setState(() {});
 
@@ -120,123 +120,48 @@ class _HostScreenState extends State<HostScreen> {
             curve: Curves.easeOut,
           );
         });
+        break;
 
-        server.response({
-          "Status": "ImageResponse",
-          "IP": svgIP,
+      case "disconnected":
+        String ip = dict["IP"] ?? "Null";
+
+        players.removeWhere((player) => player["IP"] == ip);
+        playerIPS.remove(ip);
+
+        DateTime timeDisconnected = DateTime.now();
+        String time =
+            "${timeDisconnected.hour.toString().padLeft(2, '0')}:${timeDisconnected.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"] + " disconnected",
+          "Message": dict["Username"] + " disconnected"
         });
+        setState(() {});
 
-        svgChunks.clear();
-        expectingSVG = false;
-      }
-    } else {
-      // Normal JSON decoding
-      Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
-      switch (dict["Status"]) {
-        case "connected":
-          String username = dict["Username"];
-          String ip = dict["IP"] ?? "Null";
-          String version = dict["Version"];
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
+        break;
 
-          bool ipExists = players.any((player) => player["IP"] == ip);
+      case "Buzzer":
+        if (!isSoundPlaying) {
+          isSoundPlaying = true;
+          String buzzerstring = dict["Sound"] ?? "buzzer.mp3";
+          DateTime now = DateTime.now();
+          String currentTime =
+              "${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond}";
+          AssetSource buzzersound = AssetSource(buzzerstring);
 
-          if (!ipExists) {
-            players.add({"Username": username, "IP": ip});
-          } else {
-            print('Player $username with IP $ip already exists.');
-          }
+          _audioPlayer.play(buzzersound);
 
-          checkVersion(version, globalAppVersion, ip);
-
-          DateTime timeConnected = DateTime.now();
+          dict["Message"] = "${dict["Message"]} $currentTime";
+          DateTime timenow = DateTime.now();
           String time =
-              "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
-          serverLogs.add({
-            "Time": time,
-            "Username": dict["Username"] + " connected",
-            "Message": dict["Username"] + " connected"
-          });
-          setState(() {});
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          });
-          break;
-
-        case "disconnected":
-          String ip = dict["IP"] ?? "Null";
-
-          players.removeWhere((player) => player["IP"] == ip);
-
-          DateTime timeDisconnected = DateTime.now();
-          String time =
-              "${timeDisconnected.hour.toString().padLeft(2, '0')}:${timeDisconnected.minute.toString().padLeft(2, '0')}";
-          serverLogs.add({
-            "Time": time,
-            "Username": dict["Username"] + " disconnected",
-            "Message": dict["Username"] + " disconnected"
-          });
-          setState(() {});
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          });
-          break;
-
-        case "Buzzer":
-          if (!isSoundPlaying) {
-            isSoundPlaying = true;
-            String buzzerstring = dict["Sound"] ?? "buzzer.mp3";
-            DateTime now = DateTime.now();
-            String currentTime =
-                "${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond}";
-            AssetSource buzzersound = AssetSource(buzzerstring);
-
-            _audioPlayer.play(buzzersound);
-
-            dict["Message"] = "${dict["Message"]} $currentTime";
-            DateTime timenow = DateTime.now();
-            String time =
-                "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
-            serverLogs.add({
-              "Time": time,
-              "Username": dict["Username"],
-              "Message": dict["Message"]
-            });
-            setState(() {});
-
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollController.animateTo(
-                _scrollController.position.maxScrollExtent,
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
-            });
-
-            Future.delayed(const Duration(seconds: 2), () {
-              isSoundPlaying = false;
-            });
-          }
-          break;
-
-        case "SVG":
-          expectingSVG = true;
-          svgusername = dict["Username"];
-          svgIP = dict["IP"] ?? "";
-          break;
-
-        default:
-          DateTime timeDefault = DateTime.now();
-          String time =
-              "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}";
+              "${timenow.hour.toString().padLeft(2, '0')}:${timenow.minute.toString().padLeft(2, '0')}";
           serverLogs.add({
             "Time": time,
             "Username": dict["Username"],
@@ -251,8 +176,55 @@ class _HostScreenState extends State<HostScreen> {
               curve: Curves.easeOut,
             );
           });
-          break;
-      }
+
+          Future.delayed(const Duration(seconds: 2), () {
+            isSoundPlaying = false;
+          });
+        }
+        break;
+
+      case "SVG":
+        String completeSVGData = dict["SVG-data"];
+        DateTime timesvg = DateTime.now();
+        String time =
+            "${timesvg.hour.toString().padLeft(2, '0')}:${timesvg.minute.toString().padLeft(2, '0')}";
+
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"],
+          "Message": completeSVGData,
+          "SVG": true
+        });
+        setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
+        break;
+
+      default:
+        DateTime timeDefault = DateTime.now();
+        String time =
+            "${timeDefault.hour.toString().padLeft(2, '0')}:${timeDefault.minute.toString().padLeft(2, '0')}";
+        serverLogs.add({
+          "Time": time,
+          "Username": dict["Username"],
+          "Message": dict["Message"]
+        });
+        setState(() {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        });
+        break;
     }
   }
 
@@ -636,7 +608,7 @@ class _HostScreenState extends State<HostScreen> {
                       server.broadCast({
                         'Username': 'Host',
                         'Message': controller.text,
-                      });
+                      }, playerIPS);
                       controller.text = "";
                     },
                     minWidth: 30,

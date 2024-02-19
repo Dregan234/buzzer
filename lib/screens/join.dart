@@ -37,6 +37,7 @@ class _JoinScreenState extends State<JoinScreen> {
   final _networkInfo = NetworkInfo();
   String? ipAddress = 'Loading...';
   bool isExpandedPanel = false;
+  bool canTransmit = true;
 
   @override
   void initState() {
@@ -51,8 +52,8 @@ class _JoinScreenState extends State<JoinScreen> {
     _initNetworkInfo();
   }
 
-  onData(Uint8List data) {
-    Map<String, dynamic> dict = jsonDecode(String.fromCharCodes(data));
+  onData(String data) {
+    Map<String, dynamic> dict = jsonDecode(data);
     switch (dict["Status"]) {
       case "ImageResponse":
         if (dict["IP"] == ipAddress) {
@@ -67,6 +68,10 @@ class _JoinScreenState extends State<JoinScreen> {
           Duration duration = Duration(seconds: 20);
           showSnackBarFunc(context, message, duration);
         }
+      case "transmitclosed":
+        canTransmit = false;
+      case "transmitopen":
+        canTransmit = true;
       default:
         DateTime timenow = DateTime.now();
         String time =
@@ -506,7 +511,7 @@ class _JoinScreenState extends State<JoinScreen> {
                     ),
                     MaterialButton(
                       onPressed: () {
-                        client.write({
+                          client.write({
                           'Username': namecontroller.text,
                           'Message': controller.text,
                         });
