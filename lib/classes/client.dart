@@ -33,6 +33,12 @@ class Client {
     }
   }
 
+  stop() async {
+    await server?.close();
+    server = null;
+    running = false;
+  }
+
   void onRequest(HttpRequest request) async {
     if (request.method == 'POST') {
       await handlePost(request);
@@ -115,7 +121,7 @@ class Client {
   }
 
   void disconnect() {
-    // Disconnect logic if needed
+    stop();
     connected = false;
   }
 }
