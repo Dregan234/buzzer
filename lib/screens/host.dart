@@ -9,6 +9,7 @@ import 'package:network_info_plus/network_info_plus.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:xml/xml.dart' as xml;
 
 import 'package:Bonobuzzer/classes/server.dart';
 import 'package:Bonobuzzer/screens/user.dart';
@@ -22,7 +23,6 @@ class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _HostScreenState createState() => _HostScreenState();
 }
 
@@ -41,7 +41,7 @@ class _HostScreenState extends State<HostScreen> {
   @override
   void initState() {
     super.initState();
-    server = Server(onData: onData, onError: onError);
+    server = Server(onData: onData, onError: onError, onGetAlive: onGetAlive);
     _initNetworkInfo();
   }
 
@@ -82,6 +82,20 @@ class _HostScreenState extends State<HostScreen> {
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  void onGetAlive(String data) {
+    Map<String, dynamic> dict = jsonDecode(data);
+    String username = dict["Username"];
+    String ip = dict["IP"] ?? "Null";
+
+    players
+        .removeWhere((player) => player["IP"] == ip && !playerIPS.contains(ip));
+
+    if (!playerIPS.contains(ip)) {
+      players.add({"Username": username, "IP": ip});
+      playerIPS.add(ip);
+    }
   }
 
   void onData(String data) {
@@ -274,14 +288,20 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
           const SizedBox(height: 5),
-          if (log["SVG"] == true)
-            SvgPicture.string(
-              message,
-              width: 200,
-              height: 200,
-            )
-          else
-            Text(message),
+          GestureDetector(
+            onTap: () {
+              if (log["SVG"] == true) {
+                _showImageDialog(context, message);
+              }
+            },
+            child: log["SVG"] == true
+                ? SvgPicture.string(
+                    message,
+                    width: 200,
+                    height: 200,
+                  )
+                : Text(message),
+          ),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.bottomRight,
@@ -295,6 +315,39 @@ class _HostScreenState extends State<HostScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String svgString) {
+    double width = 300;
+    double height = 300;
+
+    final document = xml.XmlDocument.parse(svgString);
+    final svgNode = document.rootElement;
+
+    final widthAttribute = svgNode.getAttribute('width');
+    final heightAttribute = svgNode.getAttribute('height');
+
+    if (widthAttribute != null) {
+      width = double.tryParse(widthAttribute) ?? width;
+    }
+    if (heightAttribute != null) {
+      height = double.tryParse(heightAttribute) ?? height;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: width,
+            height: height,
+            child: Center(
+              child: SvgPicture.string(svgString),
+            ),
+          ),
+        );
+      },
     );
   }
 

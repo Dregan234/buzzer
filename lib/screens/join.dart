@@ -407,6 +407,8 @@ class _JoinScreenState extends State<JoinScreen> {
                                 client.disconnect();
                                 serverLogs.clear();
                               } else {
+                                client.Username = namecontroller.text;
+                                client.IP = ipAddress ?? "Null";
                                 await client.connect();
                                 client.write({
                                   'Username': namecontroller.text,
