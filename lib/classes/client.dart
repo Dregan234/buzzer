@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -21,13 +22,16 @@ class Client {
   http.Client httpClient = http.Client();
   HttpServer? server;
   bool running = false;
+  Timer? aliveTimer;
+
+  String Username = "";
+  String IP = "";
 
   start() async {
     try {
       server = await HttpServer.bind('0.0.0.0', 4040);
       running = true;
       server!.listen(onRequest);
-
     } catch (e) {
       onError!(e);
     }
@@ -50,7 +54,7 @@ class Client {
     }
   }
 
-    Future<void> handlePost(HttpRequest request) async {
+  Future<void> handlePost(HttpRequest request) async {
     try {
       var jsonString = await utf8.decoder.bind(request).join();
       var data = jsonDecode(jsonString);
@@ -62,8 +66,7 @@ class Client {
         ..write('Received data: $data')
         ..close();
 
-    onData!(jsonString);
-
+      onData!(jsonString);
     } catch (e) {
       print('Error handling POST request: $e');
       request.response
@@ -77,6 +80,7 @@ class Client {
     try {
       connected = true;
       start();
+      startSendingPeriodicGetRequests();
     } on Exception catch (exception) {
       onData!("Error : $exception".codeUnits as String);
     }
@@ -86,16 +90,14 @@ class Client {
     try {
       String jsonString = jsonEncode(messageMap);
       final response = await httpClient.post(
-        Uri.parse('http://$hostname:$port'),
+        Uri.parse('http://$hostname:$port/data'),
         headers: {'Content-Type': 'application/json'},
         body: jsonString,
       );
 
       if (response.statusCode == 200) {
-        // Successfully sent data
         print('Data sent successfully');
       } else {
-        // Handle error
         print('Error sending data. Status code: ${response.statusCode}');
       }
     } catch (e) {
@@ -103,25 +105,52 @@ class Client {
     }
   }
 
+  void startSendingPeriodicGetRequests() {
+  const Duration interval = Duration(seconds: 5);
+
+  Timer.periodic(interval, (Timer timer) {
+    sendGetRequest();
+  });
+}
+
+  Future<void> sendGetRequest() async {
+  try {
+    final response = await httpClient.get(
+      Uri.parse('http://$hostname:$port/getData?ip=$IP&name=$Username'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      print('GET request successful');
+    } else {
+      print('Error sending GET request. Status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error sending GET request: $e');
+  }
+}
+
   void transmit(String message) async {
-    // Example: Sending a simple message
     final response = await httpClient.post(
-      Uri.parse('http://$hostname:$port'),
+      Uri.parse('http://$hostname:$port/data'),
       headers: {'Content-Type': 'text/plain'},
       body: message,
     );
 
     if (response.statusCode == 200) {
-      // Successfully sent data
       print('Message sent successfully');
     } else {
-      // Handle error
       print('Error sending message. Status code: ${response.statusCode}');
     }
   }
 
   void disconnect() {
+    stopSendingAliveMessages();
     stop();
     connected = false;
+  }
+
+  void stopSendingAliveMessages() {
+    aliveTimer?.cancel();
   }
 }

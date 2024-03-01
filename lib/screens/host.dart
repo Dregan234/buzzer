@@ -9,6 +9,7 @@ import 'package:network_info_plus/network_info_plus.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:xml/xml.dart' as xml;
 
 import 'package:Bonobuzzer/classes/server.dart';
 import 'package:Bonobuzzer/screens/user.dart';
@@ -22,7 +23,6 @@ class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _HostScreenState createState() => _HostScreenState();
 }
 
@@ -41,8 +41,9 @@ class _HostScreenState extends State<HostScreen> {
   @override
   void initState() {
     super.initState();
-    server = Server(onData: onData, onError: onError);
+    server = Server(onData: onData, onError: onError, onGetAlive: onGetAlive);
     _initNetworkInfo();
+    startPeriodicPlayerRemoval();
   }
 
   void checkVersion(String clientVersion, String hostVersion, String? ip) {
@@ -84,6 +85,61 @@ class _HostScreenState extends State<HostScreen> {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
+  void removePlayers() {
+  if (players.isEmpty) {
+    print("Players list is empty. No players to remove.");
+    return;
+  }
+
+  DateTime currentTime = DateTime.now();
+
+  List<Map<String, dynamic>> playersCopy = List<Map<String, dynamic>>.from(players);
+
+  for (var player in playersCopy) {
+    DateTime playerTime = DateTime.parse(player["Time"]);
+    Duration difference = currentTime.difference(playerTime);
+
+    if (difference.inSeconds > 20) {
+      players.remove(player);
+
+      playerIPS.remove(player["IP"]);
+
+      print("Removed player ${player["Username"]} with IP ${player["IP"]}.");
+    }
+  }
+}
+
+void startPeriodicPlayerRemoval() {
+  const Duration interval = Duration(seconds: 10);
+
+  Timer.periodic(interval, (timer) {
+    if (mounted) {
+      removePlayers();
+    } else {
+      timer.cancel();
+    }
+  });
+}
+
+
+  void onGetAlive(String data) {
+    Map<String, dynamic> dict = jsonDecode(data);
+    String username = dict["Username"];
+    String ip = dict["IP"] ?? "Null";
+    DateTime time = DateTime.now();
+
+    int existingPlayerIndex =
+        players.indexWhere((player) => player["IP"] == ip);
+
+    if (existingPlayerIndex == -1) {
+      players.add({"Username": username, "IP": ip, "Time": time.toString()});
+      playerIPS.add(ip);
+    } else {
+      players[existingPlayerIndex]["Time"] = time.toString();
+      print('Player $username with IP $ip already exists.');
+    }
+  }
+
   void onData(String data) {
     Map<String, dynamic> dict = jsonDecode(data);
     switch (dict["Status"]) {
@@ -91,11 +147,16 @@ class _HostScreenState extends State<HostScreen> {
         String username = dict["Username"];
         String ip = dict["IP"] ?? "Null";
         String version = dict["Version"];
+        DateTime timeConnected = DateTime.now();
 
         bool ipExists = players.any((player) => player["IP"] == ip);
 
         if (!ipExists) {
-          players.add({"Username": username, "IP": ip});
+          players.add({
+            "Username": username,
+            "IP": ip,
+            "Time": timeConnected.toString()
+          });
           playerIPS.add(ip);
         } else {
           print('Player $username with IP $ip already exists.');
@@ -103,7 +164,6 @@ class _HostScreenState extends State<HostScreen> {
 
         checkVersion(version, globalAppVersion, ip);
 
-        DateTime timeConnected = DateTime.now();
         String time =
             "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
         serverLogs.add({
@@ -274,14 +334,20 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
           const SizedBox(height: 5),
-          if (log["SVG"] == true)
-            SvgPicture.string(
-              message,
-              width: 200,
-              height: 200,
-            )
-          else
-            Text(message),
+          GestureDetector(
+            onTap: () {
+              if (log["SVG"] == true) {
+                _showImageDialog(context, message);
+              }
+            },
+            child: log["SVG"] == true
+                ? SvgPicture.string(
+                    message,
+                    width: 200,
+                    height: 200,
+                  )
+                : Text(message),
+          ),
           const SizedBox(height: 5),
           Align(
             alignment: Alignment.bottomRight,
@@ -295,6 +361,39 @@ class _HostScreenState extends State<HostScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String svgString) {
+    double width = 300;
+    double height = 300;
+
+    final document = xml.XmlDocument.parse(svgString);
+    final svgNode = document.rootElement;
+
+    final widthAttribute = svgNode.getAttribute('width');
+    final heightAttribute = svgNode.getAttribute('height');
+
+    if (widthAttribute != null) {
+      width = double.tryParse(widthAttribute) ?? width;
+    }
+    if (heightAttribute != null) {
+      height = double.tryParse(heightAttribute) ?? height;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: width,
+            height: height,
+            child: Center(
+              child: SvgPicture.string(svgString),
+            ),
+          ),
+        );
+      },
     );
   }
 

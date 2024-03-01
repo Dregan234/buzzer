@@ -6,9 +6,10 @@ typedef StringCallback = void Function(String);
 typedef DynamicCallback = void Function(dynamic);
 
 class Server {
-  Server({this.onError, this.onData});
+  Server({this.onError, this.onData, this.onGetAlive});
 
   StringCallback? onData;
+  StringCallback? onGetAlive;
   DynamicCallback? onError;
   HttpServer? server;
   bool running = false;
@@ -41,15 +42,29 @@ class Server {
   }
 
   void onRequest(HttpRequest request) async {
-    if (request.method == 'POST') {
-      await handlePost(request);
-    } else {
-      request.response
-        ..statusCode = HttpStatus.methodNotAllowed
-        ..write('Unsupported request: ${request.method}.')
-        ..close();
-    }
+  if (request.method == 'POST' && request.uri.path == '/data') {
+    await handlePost(request);
+  } else if (request.method == 'GET' && request.uri.path == '/alive') {
+    await handleGetAlive(request);
+  } else {
+    request.response
+      ..statusCode = HttpStatus.methodNotAllowed
+      ..write('Unsupported request: ${request.method}.')
+      ..close();
   }
+}
+
+Future<void> handleGetAlive(HttpRequest request) async {
+  final queryParams = request.uri.queryParameters;
+
+  final ipparam = queryParams["ip"];
+  final nameparam = queryParams["name"];
+
+  print('Received data on server: $ipparam, $nameparam');
+
+  var jsonString = jsonEncode({"Username":nameparam, "IP":ipparam});
+  onGetAlive!(jsonString);
+}
 
   Future<void> handlePost(HttpRequest request) async {
     var jsonString = await utf8.decoder.bind(request).join();
