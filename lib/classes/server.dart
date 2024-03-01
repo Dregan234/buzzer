@@ -44,7 +44,7 @@ class Server {
   void onRequest(HttpRequest request) async {
   if (request.method == 'POST' && request.uri.path == '/data') {
     await handlePost(request);
-  } else if (request.method == 'POST' && request.uri.path == '/alive') {
+  } else if (request.method == 'GET' && request.uri.path == '/alive') {
     await handleGetAlive(request);
   } else {
     request.response
@@ -55,10 +55,14 @@ class Server {
 }
 
 Future<void> handleGetAlive(HttpRequest request) async {
-  var jsonString = await utf8.decoder.bind(request).join();
+  final queryParams = request.uri.queryParameters;
 
-  print('Received data on server: $jsonString');
+  final ipparam = queryParams["ip"];
+  final nameparam = queryParams["name"];
 
+  print('Received data on server: $ipparam, $nameparam');
+
+  var jsonString = jsonEncode({"Username":nameparam, "IP":ipparam});
   onGetAlive!(jsonString);
 }
 

@@ -80,20 +80,10 @@ class Client {
     try {
       connected = true;
       start();
-      startSendingAliveMessages();
+      startSendingPeriodicGetRequests();
     } on Exception catch (exception) {
       onData!("Error : $exception".codeUnits as String);
     }
-  }
-
-  void startSendingAliveMessages() {
-    aliveTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      if (connected) {
-        sendAlive();
-      } else {
-        timer.cancel();
-      }
-    });
   }
 
   void write(Map<String, dynamic> messageMap) async {
@@ -115,6 +105,31 @@ class Client {
     }
   }
 
+  void startSendingPeriodicGetRequests() {
+  const Duration interval = Duration(seconds: 5);
+
+  Timer.periodic(interval, (Timer timer) {
+    sendGetRequest();
+  });
+}
+
+  Future<void> sendGetRequest() async {
+  try {
+    final response = await httpClient.get(
+      Uri.parse('http://$hostname:$port/getData?ip=$IP&name=$Username'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      print('GET request successful');
+    } else {
+      print('Error sending GET request. Status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error sending GET request: $e');
+  }
+}
+
   void transmit(String message) async {
     final response = await httpClient.post(
       Uri.parse('http://$hostname:$port/data'),
@@ -126,30 +141,6 @@ class Client {
       print('Message sent successfully');
     } else {
       print('Error sending message. Status code: ${response.statusCode}');
-    }
-  }
-
-  void sendAlive() async {
-    Map<String, dynamic> message = {
-      'Username': Username,
-      'IP': IP,
-    };
-    String jsonString = jsonEncode(message);
-
-    try {
-      final response = await httpClient.post(
-        Uri.parse('http://$hostname:$port/alive'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonString,
-      );
-
-      if (response.statusCode == 200) {
-        print('Message sent successfully');
-      } else {
-        print('Error sending message. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error sending message: $e');
     }
   }
 

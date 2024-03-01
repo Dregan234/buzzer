@@ -43,6 +43,7 @@ class _HostScreenState extends State<HostScreen> {
     super.initState();
     server = Server(onData: onData, onError: onError, onGetAlive: onGetAlive);
     _initNetworkInfo();
+    startPeriodicPlayerRemoval();
   }
 
   void checkVersion(String clientVersion, String hostVersion, String? ip) {
@@ -84,17 +85,58 @@ class _HostScreenState extends State<HostScreen> {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
+  void removePlayers() {
+  if (players.isEmpty) {
+    print("Players list is empty. No players to remove.");
+    return;
+  }
+
+  DateTime currentTime = DateTime.now();
+
+  List<Map<String, dynamic>> playersCopy = List<Map<String, dynamic>>.from(players);
+
+  for (var player in playersCopy) {
+    DateTime playerTime = DateTime.parse(player["Time"]);
+    Duration difference = currentTime.difference(playerTime);
+
+    if (difference.inSeconds > 20) {
+      players.remove(player);
+
+      playerIPS.remove(player["IP"]);
+
+      print("Removed player ${player["Username"]} with IP ${player["IP"]}.");
+    }
+  }
+}
+
+void startPeriodicPlayerRemoval() {
+  const Duration interval = Duration(seconds: 10);
+
+  Timer.periodic(interval, (timer) {
+    if (mounted) {
+      removePlayers();
+    } else {
+      timer.cancel();
+    }
+  });
+}
+
+
   void onGetAlive(String data) {
     Map<String, dynamic> dict = jsonDecode(data);
     String username = dict["Username"];
     String ip = dict["IP"] ?? "Null";
+    DateTime time = DateTime.now();
 
-    players
-        .removeWhere((player) => player["IP"] == ip && !playerIPS.contains(ip));
+    int existingPlayerIndex =
+        players.indexWhere((player) => player["IP"] == ip);
 
-    if (!playerIPS.contains(ip)) {
-      players.add({"Username": username, "IP": ip});
+    if (existingPlayerIndex == -1) {
+      players.add({"Username": username, "IP": ip, "Time": time.toString()});
       playerIPS.add(ip);
+    } else {
+      players[existingPlayerIndex]["Time"] = time.toString();
+      print('Player $username with IP $ip already exists.');
     }
   }
 
@@ -105,11 +147,16 @@ class _HostScreenState extends State<HostScreen> {
         String username = dict["Username"];
         String ip = dict["IP"] ?? "Null";
         String version = dict["Version"];
+        DateTime timeConnected = DateTime.now();
 
         bool ipExists = players.any((player) => player["IP"] == ip);
 
         if (!ipExists) {
-          players.add({"Username": username, "IP": ip});
+          players.add({
+            "Username": username,
+            "IP": ip,
+            "Time": timeConnected.toString()
+          });
           playerIPS.add(ip);
         } else {
           print('Player $username with IP $ip already exists.');
@@ -117,7 +164,6 @@ class _HostScreenState extends State<HostScreen> {
 
         checkVersion(version, globalAppVersion, ip);
 
-        DateTime timeConnected = DateTime.now();
         String time =
             "${timeConnected.hour.toString().padLeft(2, '0')}:${timeConnected.minute.toString().padLeft(2, '0')}";
         serverLogs.add({
