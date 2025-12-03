@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:convert';
 
-import 'package:Bonobuzzer/screens/buzzer.dart';
+import 'package:bonobuzzer/screens/buzzer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -11,9 +11,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:xml/xml.dart' as xml;
 
-import 'package:Bonobuzzer/classes/server.dart';
-import 'package:Bonobuzzer/screens/user.dart';
-import 'package:Bonobuzzer/models/version.dart';
+import 'package:bonobuzzer/classes/server.dart';
+import 'package:bonobuzzer/screens/user.dart';
+import 'package:bonobuzzer/models/version.dart';
 
 bool isDarkMode(BuildContext context) {
   return Theme.of(context).brightness == Brightness.dark;
@@ -57,7 +57,7 @@ class _HostScreenState extends State<HostScreen> {
         server.response({
           "Status": "VersionLow",
           "IP": ip,
-        }, ip);
+        }, ip!);
         return;
       } else if (clientVersionNumbers[i] > hostVersionNumbers[i]) {
         showSnackBarFunc(context);

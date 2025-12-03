@@ -1,4 +1,4 @@
-import 'package:Bonobuzzer/screens/points.dart';
+import 'package:bonobuzzer/screens/points.dart';
 import 'package:flutter/material.dart';
 
 class UserPage extends StatefulWidget {

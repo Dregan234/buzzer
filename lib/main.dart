@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:Bonobuzzer/screens/host.dart';
-import 'package:Bonobuzzer/screens/join.dart';
+import 'package:bonobuzzer/screens/host.dart';
+import 'package:bonobuzzer/screens/join.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 

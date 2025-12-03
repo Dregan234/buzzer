@@ -11,7 +11,7 @@
             "name": "buzzer - Player",
             "request": "launch",
             "type": "dart",
-            "deviceId": "ce011821c89834700d"
+            "deviceId": "RF8N50PY2RB"
         },
         {
             "name": "buzzer (profile mode)",
