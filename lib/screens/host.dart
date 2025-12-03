@@ -72,13 +72,13 @@ class _HostScreenState extends State<HostScreen> {
       content: Text(
         "Version veraltet, bitte updaten!",
         style: TextStyle(
-          color: isDarkMode(context) ? Colors.white : Colors.black,
+          color: Colors.white,
           fontSize: 16.0,
           fontWeight: FontWeight.normal,
         ),
       ),
       backgroundColor:
-          isDarkMode(context) ? Color.fromARGB(255, 0, 0, 0) : Colors.grey[300],
+          isDarkMode(context) ? Color(0xFF2D2D3D) : Colors.grey[700],
       duration: Duration(seconds: 20),
     );
 
@@ -320,7 +320,7 @@ void startPeriodicPlayerRemoval() {
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: isDarkModeActive
-            ? const Color.fromARGB(255, 0, 0, 30)
+            ? const Color(0xFF1E1E2E)
             : Colors.grey[300],
         borderRadius: BorderRadius.circular(10),
       ),
@@ -651,7 +651,7 @@ void startPeriodicPlayerRemoval() {
             ),
             Container(
               color: isDarkModeActive
-                  ? const Color.fromARGB(255, 0, 0, 30)
+                  ? const Color(0xFF1E1E2E)
                   : Colors.grey,
               height: 80,
               padding: const EdgeInsets.all(10),

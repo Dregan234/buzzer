@@ -21,8 +21,40 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       initialRoute: "/",
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.light(
+          primary: Colors.blue,
+          secondary: Colors.blueAccent,
+        ),
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(
+          primary: Color(0xFF1E88E5),
+          secondary: Color(0xFF42A5F5),
+          surface: Color(0xFF1E1E2E),
+          background: Color(0xFF121218),
+        ),
+        scaffoldBackgroundColor: Color(0xFF121218),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1E1E2E),
+          foregroundColor: Colors.white,
+        ),
+        cardColor: Color(0xFF1E1E2E),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF1E88E5),
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ),
+      themeMode: ThemeMode.system,
       home: HomeScreen()
     );
   }

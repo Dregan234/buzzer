@@ -105,11 +105,11 @@ class _JoinScreenState extends State<JoinScreen> {
         content: Text(
           message,
           style: TextStyle(
-            color: dark ? Colors.white : Colors.black,
+            color: Colors.white,
             fontSize: 16.0,
           ),
         ),
-        backgroundColor: dark ? const Color(0xFF00001E) : Colors.grey[300],
+        backgroundColor: dark ? const Color(0xFF2D2D3D) : Colors.grey[700],
         duration: duration,
       ),
     );
@@ -156,7 +156,7 @@ class _JoinScreenState extends State<JoinScreen> {
       padding: const EdgeInsets.all(8),
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
-        color: dark ? const Color(0xFF00001E) : Colors.grey[300],
+        color: dark ? const Color(0xFF1E1E2E) : Colors.grey[300],
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -371,7 +371,7 @@ class _JoinScreenState extends State<JoinScreen> {
               ),
             ),
             Container(
-              color: dark ? const Color(0xFF00001E) : Colors.grey,
+              color: dark ? const Color(0xFF1E1E2E) : Colors.grey,
               height: 80,
               padding: const EdgeInsets.all(10),
               child: Row(
