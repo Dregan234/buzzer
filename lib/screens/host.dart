@@ -550,12 +550,13 @@ void startPeriodicPlayerRemoval() {
             ),
           ],
         ),
-        body: Column(
-          children: <Widget>[
-            Expanded(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
+        body: SafeArea(
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
                 child: Column(
                   children: <Widget>[
                     Row(
@@ -722,6 +723,7 @@ void startPeriodicPlayerRemoval() {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

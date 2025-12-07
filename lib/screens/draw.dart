@@ -41,8 +41,9 @@ class _DrawingPageState extends State<DrawingPage> {
       appBar: AppBar(
         title: Text('Drawing Page'),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
           size = Size(constraints.maxWidth, constraints.maxHeight);
           return GestureDetector(
             onPanUpdate: (details) {
@@ -70,6 +71,7 @@ class _DrawingPageState extends State<DrawingPage> {
             ),
           );
         },
+        ),
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,

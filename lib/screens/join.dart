@@ -236,9 +236,10 @@ class _JoinScreenState extends State<JoinScreen> {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            ExpansionPanelList(
+        body: SafeArea(
+          child: Column(
+            children: [
+              ExpansionPanelList(
               elevation: 1,
               expandedHeaderPadding: const EdgeInsets.all(15),
               expansionCallback: (_, __) {
@@ -420,6 +421,7 @@ class _JoinScreenState extends State<JoinScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
